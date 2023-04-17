@@ -1,6 +1,8 @@
 package apiserver
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
 
 type HttpServer interface {
 	Run(addr string) (err error)
@@ -25,6 +27,7 @@ func (h httpServer) BindHandlers() {
 	//TODO implement me
 
 	h.router.GET("/test", handleGetTest)
+
 }
 
 func handleGetTest(c *gin.Context) {
