@@ -1,6 +1,6 @@
 package core
 
-// A single application container that you want to run within a pod.
+// Container is a single application container that you want to run within a pod.
 type Container struct {
 	// Name of the container specified as a DNS_LABEL.
 	// Each container in a pod must have a unique name (DNS_LABEL).
