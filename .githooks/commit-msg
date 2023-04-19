@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# regex to validate in commit msg
+commit_regex="^(build|ci|docs|feat|fix|perf|refactor|test)(\(.+\))?:\s(.{1,50})(?:\n\n(.+))?$"
+error_msg="""
+Aborting commit. Your commit message is violating Commit Style:
+
+<type>: <summary(1~50 word)>
+<newline>
+<body>
+"""
+
+if ! pcre2grep -M "$commit_regex" "$1"; then
+    echo "$error_msg" >&2
+    exit 1
+fi
