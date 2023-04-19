@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"log"
+	"minik8s/pkg/apiserver/etcd"
 )
 
 type ApiServer interface {
@@ -22,8 +23,8 @@ func (a apiServer) Run() {
 	log.Printf("[apiserver] apiserver start\n")
 
 	// etcd
-	initEtcd()
-	defer closeEtcd()
+	etcd.Init()
+	defer etcd.Close()
 
 	a.httpServer.BindHandlers()
 

@@ -1,4 +1,4 @@
-package apiserver
+package etcd
 
 import (
 	"context"
@@ -16,7 +16,9 @@ var (
 	etcdClient     *clientv3.Client
 )
 
-func initEtcd() {
+const EmptyGetResult string = ""
+
+func Init() {
 	etcdConfig = clientv3.Config{
 		Endpoints:            []string{etcdEndpoint},
 		DialTimeout:          30 * time.Second,
@@ -33,7 +35,7 @@ func initEtcd() {
 
 }
 
-func closeEtcd() {
+func Close() {
 	err := etcdClient.Close()
 	if err != nil {
 		log.Printf("[etcd] close etcd client failed, err:%v\n", err)
@@ -42,7 +44,7 @@ func closeEtcd() {
 	}
 }
 
-func etcdPut(key, value string) (err error) {
+func Put(key, value string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	_, err = etcdClient.Put(ctx, key, value)
 	cancel()
@@ -62,23 +64,23 @@ func etcdPut(key, value string) (err error) {
 	return err
 }
 
-func etcdGet(key string) (value string, err error) {
+func Get(key string) (value string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	resp, err := etcdClient.Get(ctx, key)
 	cancel()
 	if err != nil {
 		log.Printf("[etcd] Get failed, err:%v\n", err)
-		return "", err
+		return EmptyGetResult, err
 	}
 
 	if len(resp.Kvs) > 0 {
 		return string(resp.Kvs[0].Value), err
 	} else {
-		return "", err
+		return EmptyGetResult, err
 	}
 }
 
-func etcdHas(key string) (value bool, err error) {
+func Has(key string) (value bool, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	resp, err := etcdClient.Get(ctx, key)
 	cancel()
@@ -94,7 +96,7 @@ func etcdHas(key string) (value bool, err error) {
 	}
 }
 
-func etcdGetAllWithPrefix(keyPrefix string) (values []string, err error) {
+func GetAllWithPrefix(keyPrefix string) (values []string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	resp, err := etcdClient.Get(ctx, keyPrefix, clientv3.WithPrefix())
 	cancel()
@@ -108,7 +110,7 @@ func etcdGetAllWithPrefix(keyPrefix string) (values []string, err error) {
 	return values, err
 }
 
-func etcdDelete(key string) (err error) {
+func Delete(key string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	_, err = etcdClient.Delete(ctx, key)
 	cancel()
@@ -119,7 +121,7 @@ func etcdDelete(key string) (err error) {
 	return err
 }
 
-func etcdDeleteAllWithPrefix(key string) (err error) {
+func EtcdDeleteAllWithPrefix(key string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	_, err = etcdClient.Delete(ctx, key, clientv3.WithPrefix())
 	cancel()
@@ -130,6 +132,6 @@ func etcdDeleteAllWithPrefix(key string) (err error) {
 	return err
 }
 
-func etcdClear() (err error) {
-	return etcdDeleteAllWithPrefix("")
+func EtcdClear() (err error) {
+	return EtcdDeleteAllWithPrefix("")
 }
