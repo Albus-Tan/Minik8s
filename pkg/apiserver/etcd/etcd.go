@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+type Event clientv3.Event
+
+const (
+	EventTypeDelete = clientv3.EventTypeDelete
+	EventTypePut    = clientv3.EventTypePut
+)
+
 var (
 	etcdEndpoint   = "localhost:2379"
 	requestTimeout = time.Second
@@ -121,7 +128,7 @@ func Delete(key string) (err error) {
 	return err
 }
 
-func EtcdDeleteAllWithPrefix(key string) (err error) {
+func DeleteAllWithPrefix(key string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	_, err = etcdClient.Delete(ctx, key, clientv3.WithPrefix())
 	cancel()
@@ -132,6 +139,24 @@ func EtcdDeleteAllWithPrefix(key string) (err error) {
 	return err
 }
 
-func EtcdClear() (err error) {
-	return EtcdDeleteAllWithPrefix("")
+func Clear() (err error) {
+	return DeleteAllWithPrefix("")
+}
+
+func Watch(key string) (context.CancelFunc, chan *Event) {
+	ctx, cancel := context.WithCancel(context.Background())
+	rch := etcdClient.Watch(ctx, key)
+	ch := make(chan *Event)
+	go doWatch(rch, ch)
+	return cancel, ch
+}
+
+func doWatch(rch clientv3.WatchChan, ch chan *Event) {
+	// continue to read rch until it's closed
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			log.Printf("[etcd] watch notified %s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			ch <- (*Event)(ev)
+		}
+	}
 }

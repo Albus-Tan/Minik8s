@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"io"
 	"log"
+	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/apiserver/etcd"
 	"net/http"
@@ -46,9 +48,9 @@ func HandlePostPod(c *gin.Context) {
 	// put Pod info into etcd
 	err = etcd.Put(c.Request.URL.Path+podUID, string(buf))
 	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(200, gin.H{"status": "OK", "uid": podUID})
+		c.JSON(http.StatusOK, gin.H{"status": "OK", "uid": podUID})
 	}
 }
 
@@ -74,9 +76,9 @@ func HandlePutPod(c *gin.Context) {
 	// put/update Pod info into etcd
 	err = etcd.Put(c.Request.URL.Path, string(buf))
 	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(200, gin.H{"status": "OK"})
+		c.JSON(http.StatusOK, gin.H{"status": "OK"})
 	}
 
 }
@@ -96,9 +98,9 @@ func HandleDeletePod(c *gin.Context) {
 	// delete Pod in etcd
 	err = etcd.Delete(c.Request.URL.Path)
 	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(200, gin.H{"status": "OK"})
+		c.JSON(http.StatusOK, gin.H{"status": "OK"})
 	}
 }
 
@@ -123,7 +125,60 @@ func HandleGetPods(c *gin.Context) {
 }
 
 func HandleWatchPod(c *gin.Context) {
+	resourceURL := api.PodsURL + c.Param("name")
 
+	// check if Pod exist
+	has, err := etcd.Has(resourceURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	if !has {
+		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": "No such pod"})
+		return
+	}
+
+	// register watch
+	log.Printf("[apiserver][HandleWatchPod] Start watching resourceURL %v\n", resourceURL)
+	cancel, ch := etcd.Watch(resourceURL)
+	flusher, _ := c.Writer.(http.Flusher)
+	for {
+		select {
+		case ev := <-ch:
+			val, err := json.Marshal(string(ev.Kv.Value))
+			if err != nil {
+				log.Printf("[apiserver][HandleWatchPod] json parse error, cancel watch task\n")
+				cancel()
+				return
+			}
+			switch ev.Type {
+			case etcd.EventTypeDelete:
+				// cancel watch after delete
+				log.Printf("[apiserver] Pod delete, cancel watch task\n")
+				cancel()
+				c.JSON(http.StatusOK, gin.H{"status": "OK"})
+				return
+			case etcd.EventTypePut:
+				log.Printf("[apiserver] Pod put\n")
+			default:
+				// will not reach here
+			}
+			_, err = fmt.Fprintf(c.Writer, "%v\n", val)
+			if err != nil {
+				log.Printf("[apiserver][HandleWatchPod] fail to write to client, cancel watch task\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
+		case <-c.Request.Context().Done():
+			log.Printf("[apiserver] Connection closed, cancel watch task\n")
+			cancel()
+			c.JSON(http.StatusOK, gin.H{"status": "OK"})
+			return
+		default:
+			// when ch is blocked
+		}
+	}
 }
 
 func HandleWatchPods(c *gin.Context) {
