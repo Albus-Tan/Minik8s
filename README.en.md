@@ -20,11 +20,8 @@ Software architecture description
 
 #### Contribution
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
-
+Minik8s follows the (reduced) angular commit style, every commit message should be checked by the scripts
+To enable it, you should run `git config --local core.hooksPath .githooks/`
 
 #### Gitee Feature
 
