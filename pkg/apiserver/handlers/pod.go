@@ -149,6 +149,7 @@ func HandleWatchPod(c *gin.Context) {
 			if err != nil {
 				log.Printf("[apiserver][HandleWatchPod] json parse error, cancel watch task\n")
 				cancel()
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 				return
 			}
 			switch ev.Type {
@@ -167,6 +168,7 @@ func HandleWatchPod(c *gin.Context) {
 			if err != nil {
 				log.Printf("[apiserver][HandleWatchPod] fail to write to client, cancel watch task\n")
 				cancel()
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 				return
 			}
 			flusher.Flush()
@@ -182,13 +184,132 @@ func HandleWatchPod(c *gin.Context) {
 }
 
 func HandleWatchPods(c *gin.Context) {
+	resourceURL := api.PodsURL
 
+	// register watch
+	log.Printf("[apiserver][HandleWatchPods] Start watching resourceURL %v\n", resourceURL)
+	cancel, ch := etcd.WatchAllWithPrefix(resourceURL)
+	flusher, _ := c.Writer.(http.Flusher)
+	for {
+		select {
+		case ev := <-ch:
+			val, err := json.Marshal(string(ev.Kv.Value))
+			if err != nil {
+				log.Printf("[apiserver][HandleWatchPods] json parse error, cancel watch task\n")
+				cancel()
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			switch ev.Type {
+			case etcd.EventTypeDelete:
+				// cancel watch after delete
+				log.Printf("[apiserver] Pod delete\n")
+			case etcd.EventTypePut:
+				log.Printf("[apiserver] Pod put\n")
+			default:
+				// will not reach here
+			}
+			_, err = fmt.Fprintf(c.Writer, "%v\n", val)
+			if err != nil {
+				log.Printf("[apiserver][HandleWatchPods] fail to write to client, cancel watch task\n")
+				cancel()
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			flusher.Flush()
+		case <-c.Request.Context().Done():
+			log.Printf("[apiserver] Connection closed, cancel watch task\n")
+			cancel()
+			c.JSON(http.StatusOK, gin.H{"status": "OK"})
+			return
+		default:
+			// when ch is blocked
+		}
+	}
 }
 
 func HandleGetPodStatus(c *gin.Context) {
+	podJson, err := etcd.Get(api.PodsURL + c.Param("name"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+	} else if podJson == etcd.EmptyGetResult {
+		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": "No such podJson"})
+	} else {
+		pod := &core.Pod{}
+		err = json.Unmarshal([]byte(podJson), &pod)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+			return
+		}
 
+		podStatus, err := json.Marshal(pod.Status)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, string(podStatus))
+	}
 }
 
 func HandlePutPodStatus(c *gin.Context) {
+	// check if Pod exist
+	etcdURL := api.PodsURL + c.Param("name")
+	has, err := etcd.Has(etcdURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	if !has {
+		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": "No such pod"})
+		return
+	}
 
+	// read request body
+	newStatus, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// parse new status
+	podStatus := &core.PodStatus{}
+	err = json.Unmarshal(newStatus, &podStatus)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// read old pod
+	podJson, err := etcd.Get(api.PodsURL + c.Param("name"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// parse old pod
+	pod := &core.Pod{}
+	err = json.Unmarshal([]byte(podJson), &pod)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// update status
+	pod.Status = *podStatus
+
+	// marshal new pod
+	buf, err := json.Marshal(pod)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// put/update Pod info into etcd
+	err = etcd.Put(etcdURL, string(buf))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"status": "OK"})
+	}
 }

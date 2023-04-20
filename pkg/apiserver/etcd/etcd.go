@@ -151,6 +151,14 @@ func Watch(key string) (context.CancelFunc, chan *Event) {
 	return cancel, ch
 }
 
+func WatchAllWithPrefix(key string) (context.CancelFunc, chan *Event) {
+	ctx, cancel := context.WithCancel(context.Background())
+	rch := etcdClient.Watch(ctx, key, clientv3.WithPrefix())
+	ch := make(chan *Event)
+	go doWatch(rch, ch)
+	return cancel, ch
+}
+
 func doWatch(rch clientv3.WatchChan, ch chan *Event) {
 	// continue to read rch until it's closed
 	for wresp := range rch {
