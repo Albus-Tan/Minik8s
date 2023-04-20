@@ -70,10 +70,10 @@ type PodSpec struct {
 	NodeName string `json:"nodeName,omitempty" protobuf:"bytes,10,opt,name=nodeName"`
 
 	// TODO
-	ExposedPorts []string `json:"exposedports,omitempty"`
+	ExposedPorts []string `json:"exposedPorts,omitempty"`
 
 	// TODO
-	BindPorts map[string]string `json:"bindports,omitempty"`
+	BindPorts map[string]string `json:"bindPorts,omitempty"`
 }
 
 // RestartPolicy describes how the container should be restarted.
