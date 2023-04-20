@@ -19,3 +19,12 @@ const (
 	WatchNodeURL  = "/api/watch/nodes/:name"
 	NodeStatusURL = "/api/nodes/:name/status"
 )
+
+// Service
+const (
+	ServicesURL      = "/api/services/"
+	ServiceURL       = "/api/services/:name"
+	WatchServicesURL = "/api/watch/services/"
+	WatchServiceURL  = "/api/watch/services/:name"
+	ServiceStatusURL = "/api/services/:name/status"
+)
