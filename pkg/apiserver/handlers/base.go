@@ -23,22 +23,24 @@ func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
 
 	// parse request body from json to core.{ApiObject} type
 	newObject := core.CreateApiObject(ty)
-	err = json.Unmarshal(buf, &newObject)
+	err = newObject.JsonUnmarshal(buf)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 		return
 	}
+	//log.Printf("[apiserver] JsonUnmarshal buf %v", string(buf))
 
 	// generate uuid for {ApiObject}
 	uuidV4 := uuid.New()
 	objectUID := uuidV4.String()
 	log.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
 	newObject.SetUID(objectUID)
-	buf, err = json.Marshal(newObject)
+	buf, err = newObject.JsonMarshal()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 		return
 	}
+	//log.Printf("[apiserver] JsonMarshal buf %v", string(buf))
 
 	// put {ApiObject} info into etcd
 	err = etcd.Put(c.Request.URL.Path+objectUID, string(buf))
@@ -137,7 +139,8 @@ func handleWatchObject(c *gin.Context, ty core.ApiObjectType, resourceURL string
 	for {
 		select {
 		case ev := <-ch:
-			val, err := json.Marshal(string(ev.Kv.Value))
+			data, err := json.Marshal(string(ev.Kv.Value))
+			val := string(data)
 			if err != nil {
 				log.Printf("[apiserver][HandleWatch%v] json parse error, cancel watch task\n", ty)
 				cancel()
@@ -183,7 +186,8 @@ func handleWatchObjects(c *gin.Context, ty core.ApiObjectType, resourceURL strin
 	for {
 		select {
 		case ev := <-ch:
-			val, err := json.Marshal(string(ev.Kv.Value))
+			data, err := json.Marshal(string(ev.Kv.Value))
+			val := string(data)
 			if err != nil {
 				log.Printf("[apiserver][HandleWatch%vs] json parse error, cancel watch task\n", ty)
 				cancel()

@@ -52,7 +52,7 @@ func HandleGetPodStatus(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": "No such podJson"})
 	} else {
 		pod := &core.Pod{}
-		err = json.Unmarshal([]byte(podJson), &pod)
+		err = json.Unmarshal([]byte(podJson), pod)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 			return

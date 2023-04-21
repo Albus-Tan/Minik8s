@@ -1,6 +1,8 @@
 package core
 
-import "minik8s/pkg/api/types"
+import (
+	"minik8s/pkg/api/types"
+)
 
 type ApiObjectType string
 
@@ -14,16 +16,18 @@ const (
 type IApiObject interface {
 	SetUID(uid types.UID)
 	GetUID() types.UID
+	JsonUnmarshal(data []byte) error
+	JsonMarshal() ([]byte, error)
 }
 
 func CreateApiObject(ty ApiObjectType) IApiObject {
 	switch ty {
 	case PodObjectType:
-		return Pod{}
+		return &Pod{}
 	case ServiceObjectType:
-		return Service{}
+		return &Service{}
 	case NodeObjectType:
-		return Node{}
+		return &Node{}
 	default:
 	}
 	return nil

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 )
@@ -28,11 +29,19 @@ type Pod struct {
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
-func (p Pod) SetUID(uid types.UID) {
+func (p *Pod) JsonMarshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+func (p *Pod) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &p)
+}
+
+func (p *Pod) SetUID(uid types.UID) {
 	p.ObjectMeta.UID = uid
 }
 
-func (p Pod) GetUID() types.UID {
+func (p *Pod) GetUID() types.UID {
 	return p.ObjectMeta.UID
 }
 

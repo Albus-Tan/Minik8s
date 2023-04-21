@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 )
@@ -28,11 +29,19 @@ type Service struct {
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
-func (s Service) SetUID(uid types.UID) {
+func (s *Service) JsonMarshal() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+func (s *Service) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &s)
+}
+
+func (s *Service) SetUID(uid types.UID) {
 	s.ObjectMeta.UID = uid
 }
 
-func (s Service) GetUID() types.UID {
+func (s *Service) GetUID() types.UID {
 	return s.ObjectMeta.UID
 }
 
