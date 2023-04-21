@@ -1,6 +1,9 @@
 package core
 
-import "minik8s/pkg/api/meta"
+import (
+	"minik8s/pkg/api/meta"
+	"minik8s/pkg/api/types"
+)
 
 // Pod is a collection of containers that can run on a host. This resource is created
 // by clients and scheduled onto hosts.
@@ -23,6 +26,14 @@ type Pod struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (p Pod) SetUID(uid types.UID) {
+	p.ObjectMeta.UID = uid
+}
+
+func (p Pod) GetUID() types.UID {
+	return p.ObjectMeta.UID
 }
 
 // PodSpec is a description of a pod.

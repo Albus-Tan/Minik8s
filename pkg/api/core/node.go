@@ -1,6 +1,9 @@
 package core
 
-import "minik8s/pkg/api/meta"
+import (
+	"minik8s/pkg/api/meta"
+	"minik8s/pkg/api/types"
+)
 
 // Node is a worker node in Kubernetes.
 // Each node will have a unique identifier in the cache (i.e. in etcd).
@@ -22,6 +25,14 @@ type Node struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status NodeStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (n Node) SetUID(uid types.UID) {
+	n.ObjectMeta.UID = uid
+}
+
+func (n Node) GetUID() types.UID {
+	return n.ObjectMeta.UID
 }
 
 // NodeSpec describes the attributes that a node is created with.

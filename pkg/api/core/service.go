@@ -1,6 +1,9 @@
 package core
 
-import "minik8s/pkg/api/meta"
+import (
+	"minik8s/pkg/api/meta"
+	"minik8s/pkg/api/types"
+)
 
 // Service is a named abstraction of software service (for example, mysql) consisting of local port
 // (for example 3306) that the proxy listens on, and the selector that determines which pods
@@ -23,6 +26,14 @@ type Service struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (s Service) SetUID(uid types.UID) {
+	s.ObjectMeta.UID = uid
+}
+
+func (s Service) GetUID() types.UID {
+	return s.ObjectMeta.UID
 }
 
 // ServiceSpec describes the attributes that a user creates on a service.
