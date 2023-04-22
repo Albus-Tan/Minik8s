@@ -21,7 +21,8 @@ func HandleDeleteNode(c *gin.Context) {
 }
 
 func HandleDeleteNodes(c *gin.Context) {
-
+	// TODO: implement me
+	panic("implement me")
 }
 
 func HandleGetNode(c *gin.Context) {
@@ -34,18 +35,20 @@ func HandleGetNodes(c *gin.Context) {
 
 func HandleWatchNode(c *gin.Context) {
 	resourceURL := api.NodesURL + c.Param("name")
-	handleWatchObject(c, core.NodeObjectType, resourceURL)
+	handleWatchObjectAndStatus(c, core.NodeObjectType, resourceURL)
 }
 
 func HandleWatchNodes(c *gin.Context) {
 	resourceURL := api.NodesURL
-	handleWatchObjects(c, core.NodeObjectType, resourceURL)
+	handleWatchObjectsAndStatus(c, core.NodeObjectType, resourceURL)
 }
 
 func HandleGetNodeStatus(c *gin.Context) {
-
+	resourceURL := api.NodesURL + c.Param("name")
+	handleGetObjectStatus(c, core.NodeObjectType, resourceURL)
 }
 
 func HandlePutNodeStatus(c *gin.Context) {
-
+	etcdURL := api.NodesURL + c.Param("name")
+	handlePutObjectStatus(c, core.NodeObjectType, etcdURL)
 }

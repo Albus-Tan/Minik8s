@@ -120,7 +120,7 @@ func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleWatchObject(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
 	// check if {ApiObject} exist
 	has, err := etcd.Has(resourceURL)
 	if err != nil {
@@ -134,7 +134,7 @@ func handleWatchObject(c *gin.Context, ty core.ApiObjectType, resourceURL string
 
 	// register watch
 	log.Printf("[apiserver][HandleWatch%v] Start watching resourceURL %v\n", ty, resourceURL)
-	cancel, ch := etcd.Watch(resourceURL)
+	cancel, ch := etcd.WatchAllWithPrefix(resourceURL)
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
 		select {
@@ -178,7 +178,7 @@ func handleWatchObject(c *gin.Context, ty core.ApiObjectType, resourceURL string
 	}
 }
 
-func handleWatchObjects(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
 	// register watch
 	log.Printf("[apiserver][HandleWatch%vs] Start watching resourceURL %v\n", ty, resourceURL)
 	cancel, ch := etcd.WatchAllWithPrefix(resourceURL)

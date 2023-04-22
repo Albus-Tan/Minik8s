@@ -32,12 +32,12 @@ func HandleGetPods(c *gin.Context) {
 
 func HandleWatchPod(c *gin.Context) {
 	resourceURL := api.PodsURL + c.Param("name")
-	handleWatchObject(c, core.PodObjectType, resourceURL)
+	handleWatchObjectAndStatus(c, core.PodObjectType, resourceURL)
 }
 
 func HandleWatchPods(c *gin.Context) {
 	resourceURL := api.PodsURL
-	handleWatchObjects(c, core.PodObjectType, resourceURL)
+	handleWatchObjectsAndStatus(c, core.PodObjectType, resourceURL)
 }
 
 func HandleGetPodStatus(c *gin.Context) {

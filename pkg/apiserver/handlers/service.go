@@ -30,18 +30,20 @@ func HandleGetServices(c *gin.Context) {
 
 func HandleWatchService(c *gin.Context) {
 	resourceURL := api.ServicesURL + c.Param("name")
-	handleWatchObject(c, core.ServiceObjectType, resourceURL)
+	handleWatchObjectAndStatus(c, core.ServiceObjectType, resourceURL)
 }
 
 func HandleWatchServices(c *gin.Context) {
 	resourceURL := api.ServicesURL
-	handleWatchObjects(c, core.ServiceObjectType, resourceURL)
+	handleWatchObjectsAndStatus(c, core.ServiceObjectType, resourceURL)
 }
 
 func HandleGetServiceStatus(c *gin.Context) {
-
+	resourceURL := api.ServicesURL + c.Param("name")
+	handleGetObjectStatus(c, core.ServiceObjectType, resourceURL)
 }
 
 func HandlePutServiceStatus(c *gin.Context) {
-
+	etcdURL := api.ServicesURL + c.Param("name")
+	handlePutObjectStatus(c, core.ServiceObjectType, etcdURL)
 }
