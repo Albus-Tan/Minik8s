@@ -28,6 +28,26 @@ type Node struct {
 	Status NodeStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (n *Node) SetStatus(s IApiObjectStatus) bool {
+	status, ok := s.(*NodeStatus)
+	if ok {
+		n.Status = *status
+	}
+	return ok
+}
+
+func (n *Node) GetStatus() IApiObjectStatus {
+	return &n.Status
+}
+
+func (n *Node) JsonUnmarshalStatus(data []byte) error {
+	return json.Unmarshal(data, &(n.Status))
+}
+
+func (n *Node) JsonMarshalStatus() ([]byte, error) {
+	return json.Marshal(n.Status)
+}
+
 func (n *Node) JsonMarshal() ([]byte, error) {
 	return json.Marshal(n)
 }
@@ -79,6 +99,14 @@ type NodeStatus struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	Addresses []NodeAddress `json:"addresses,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,5,rep,name=addresses"`
+}
+
+func (n *NodeStatus) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &n)
+}
+
+func (n *NodeStatus) JsonMarshal() ([]byte, error) {
+	return json.Marshal(n)
 }
 
 // +enum

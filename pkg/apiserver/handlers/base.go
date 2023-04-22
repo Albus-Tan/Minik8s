@@ -221,3 +221,91 @@ func handleWatchObjects(c *gin.Context, ty core.ApiObjectType, resourceURL strin
 		}
 	}
 }
+
+func handleGetObjectStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+	objectJson, err := etcd.Get(resourceURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+	} else if objectJson == etcd.EmptyGetResult {
+		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": fmt.Sprintf("No such %v", ty)})
+	} else {
+		object := core.CreateApiObject(ty)
+		err = object.JsonUnmarshal([]byte(objectJson))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+			return
+		}
+
+		objectStatus, err := object.JsonMarshalStatus()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, string(objectStatus))
+	}
+}
+
+func handlePutObjectStatus(c *gin.Context, ty core.ApiObjectType, etcdURL string) {
+
+	has, err := etcd.Has(etcdURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	if !has {
+		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": fmt.Sprintf("No such %v", ty)})
+		return
+	}
+
+	// read request body
+	newStatus, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// parse new status
+	objectStatus := core.CreateApiObjectStatus(ty)
+	err = objectStatus.JsonUnmarshal(newStatus)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// read old {ApiObject}
+	objectJson, err := etcd.Get(etcdURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// parse old {ApiObject}
+	object := core.CreateApiObject(ty)
+	err = object.JsonUnmarshal([]byte(objectJson))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// update status
+	if success := object.SetStatus(objectStatus); !success {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": fmt.Sprintf("%vStatus update error, type unmatch", ty)})
+		return
+	}
+
+	// marshal new object
+	buf, err := object.JsonMarshal()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// put/update {ApiObject} info into etcd
+	err = etcd.Put(etcdURL, string(buf))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"status": "OK"})
+	}
+}

@@ -29,6 +29,26 @@ type Service struct {
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (s *Service) SetStatus(st IApiObjectStatus) bool {
+	status, ok := st.(*ServiceStatus)
+	if ok {
+		s.Status = *status
+	}
+	return ok
+}
+
+func (s *Service) GetStatus() IApiObjectStatus {
+	return &s.Status
+}
+
+func (s *Service) JsonUnmarshalStatus(data []byte) error {
+	return json.Unmarshal(data, &(s.Status))
+}
+
+func (s *Service) JsonMarshalStatus() ([]byte, error) {
+	return json.Marshal(s.Status)
+}
+
 func (s *Service) JsonMarshal() ([]byte, error) {
 	return json.Marshal(s)
 }
@@ -173,4 +193,12 @@ type ServicePort struct {
 
 // ServiceStatus represents the current status of a service.
 type ServiceStatus struct {
+}
+
+func (s *ServiceStatus) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &s)
+}
+
+func (s *ServiceStatus) JsonMarshal() ([]byte, error) {
+	return json.Marshal(s)
 }

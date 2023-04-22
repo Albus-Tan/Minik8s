@@ -29,6 +29,26 @@ type Pod struct {
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (p *Pod) SetStatus(s IApiObjectStatus) bool {
+	status, ok := s.(*PodStatus)
+	if ok {
+		p.Status = *status
+	}
+	return ok
+}
+
+func (p *Pod) GetStatus() IApiObjectStatus {
+	return &p.Status
+}
+
+func (p *Pod) JsonUnmarshalStatus(data []byte) error {
+	return json.Unmarshal(data, &(p.Status))
+}
+
+func (p *Pod) JsonMarshalStatus() ([]byte, error) {
+	return json.Marshal(p.Status)
+}
+
 func (p *Pod) JsonMarshal() ([]byte, error) {
 	return json.Marshal(p)
 }
@@ -146,6 +166,14 @@ type PodStatus struct {
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status
 	// +optional
 	ContainerStatuses []ContainerStatus `json:"containerStatuses,omitempty" protobuf:"bytes,8,rep,name=containerStatuses"`
+}
+
+func (p *PodStatus) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &p)
+}
+
+func (p *PodStatus) JsonMarshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
