@@ -1,12 +1,13 @@
 package core
 
 import (
+	"fmt"
 	"minik8s/pkg/api/types"
 )
 
 type ApiObjectType string
 
-// These are the valid statuses of pods.
+// These are the valid ApiObjectType.
 const (
 	PodObjectType     ApiObjectType = "Pod"
 	ServiceObjectType ApiObjectType = "Service"
@@ -38,6 +39,7 @@ func CreateApiObject(ty ApiObjectType) IApiObject {
 	case NodeObjectType:
 		return &Node{}
 	default:
+		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
 	return nil
 }
@@ -51,6 +53,7 @@ func CreateApiObjectStatus(ty ApiObjectType) IApiObjectStatus {
 	case NodeObjectType:
 		return &NodeStatus{}
 	default:
+		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
 	return nil
 }
