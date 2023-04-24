@@ -28,7 +28,7 @@ func (h httpServer) Run(addr string) (err error) {
 func (h httpServer) BindHandlers() {
 	//TODO implement me
 
-	h.router.GET("/test", handleGetTest)
+	//h.router.GET("/test", handleGetTest)
 
 	/*--------------------- Pod ---------------------*/
 	// Create a Pod
@@ -92,10 +92,40 @@ func (h httpServer) BindHandlers() {
 	// Update/Replace status of the specified Node
 	// PUT /api/nodes/{name}/status
 	h.router.PUT(api.NodeStatusURL, handlers.HandlePutNodeStatus)
+
+	/*--------------------- Service ---------------------*/
+	// Create a Service
+	// POST /api/services
+	h.router.POST(api.ServicesURL, handlers.HandlePostService)
+	// Update/Replace the specified Service
+	// PUT /api/services/{name}
+	h.router.PUT(api.ServiceURL, handlers.HandlePutService)
+	// Delete a Service
+	// DELETE /api/services/{name}
+	h.router.DELETE(api.ServiceURL, handlers.HandleDeleteService)
+	// Read the specified Service
+	// GET /api/services/{name}
+	h.router.GET(api.ServiceURL, handlers.HandleGetService)
+	// List or watch objects of kind Service
+	// GET /api/services
+	h.router.GET(api.ServicesURL, handlers.HandleGetServices)
+	// Watch changes to an object of kind Service
+	// GET /api/watch/services/{name}
+	h.router.GET(api.WatchServiceURL, handlers.HandleWatchService)
+	// Watch individual changes to a list of Service
+	// GET /api/watch/services
+	h.router.GET(api.WatchServicesURL, handlers.HandleWatchServices)
+	/*--------------------- Service Status ---------------------*/
+	// Read status of the specified Service
+	// GET /api/services/{name}/status
+	h.router.GET(api.ServiceStatusURL, handlers.HandleGetServiceStatus)
+	// Replace status of the specified Service
+	// PUT /api/services/{name}/status
+	h.router.PUT(api.ServiceStatusURL, handlers.HandlePutServiceStatus)
 }
 
-func handleGetTest(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "hello world",
-	})
-}
+//func handleGetTest(c *gin.Context) {
+//	c.JSON(200, gin.H{
+//		"message": "hello world",
+//	})
+//}

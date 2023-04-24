@@ -57,6 +57,19 @@ type ObjectMeta struct {
 	// +optional
 	UID types.UID `json:"uid,omitempty" protobuf:"bytes,5,opt,name=uid,casttype=k8s.io/kubernetes/pkg/types.UID"`
 
+	// An opaque value that represents the internal version of this object that can
+	// be used by clients to determine when objects have changed. May be used for optimistic
+	// concurrency, change detection, and the watch operation on a resource or set of resources.
+	// Clients must treat these values as opaque and passed unmodified back to the server.
+	// They may only be valid for a particular resource or set of resources.
+	//
+	// Populated by the system.
+	// Read-only.
+	// Value must be treated as opaque by clients and .
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+	// +optional
+	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,6,opt,name=resourceVersion"`
+
 	// A sequence number representing a specific generation of the desired state.
 	// Populated by the system. Read-only.
 	// +optional
@@ -98,4 +111,16 @@ type OwnerReference struct {
 	// If true, this reference points to the managing controller.
 	// +optional
 	Controller *bool `json:"controller,omitempty" protobuf:"varint,6,opt,name=controller"`
+}
+
+// LabelSelector A label selector is a label query over a set of resources. The result of matchLabels and
+// matchExpressions are ANDed. An empty label selector matches all objects. A null
+// label selector matches no objects.
+// +structType=atomic
+type LabelSelector struct {
+	// matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+	// map is equivalent to an element of matchExpressions, whose key field is "key", the
+	// operator is "In", and the values array contains only "value". The requirements are ANDed.
+	// +optional
+	MatchLabels map[string]string `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
 }

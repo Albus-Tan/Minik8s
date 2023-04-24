@@ -1,6 +1,10 @@
 package core
 
-import "minik8s/pkg/api/meta"
+import (
+	"encoding/json"
+	"minik8s/pkg/api/meta"
+	"minik8s/pkg/api/types"
+)
 
 // Pod is a collection of containers that can run on a host. This resource is created
 // by clients and scheduled onto hosts.
@@ -23,6 +27,50 @@ type Pod struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (p *Pod) SetResourceVersion(version string) {
+	p.ObjectMeta.ResourceVersion = version
+}
+
+func (p *Pod) GetResourceVersion() string {
+	return p.ObjectMeta.ResourceVersion
+}
+
+func (p *Pod) SetStatus(s IApiObjectStatus) bool {
+	status, ok := s.(*PodStatus)
+	if ok {
+		p.Status = *status
+	}
+	return ok
+}
+
+func (p *Pod) GetStatus() IApiObjectStatus {
+	return &p.Status
+}
+
+func (p *Pod) JsonUnmarshalStatus(data []byte) error {
+	return json.Unmarshal(data, &(p.Status))
+}
+
+func (p *Pod) JsonMarshalStatus() ([]byte, error) {
+	return json.Marshal(p.Status)
+}
+
+func (p *Pod) JsonMarshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+func (p *Pod) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &p)
+}
+
+func (p *Pod) SetUID(uid types.UID) {
+	p.ObjectMeta.UID = uid
+}
+
+func (p *Pod) GetUID() types.UID {
+	return p.ObjectMeta.UID
 }
 
 // PodSpec is a description of a pod.
@@ -70,10 +118,10 @@ type PodSpec struct {
 	NodeName string `json:"nodeName,omitempty" protobuf:"bytes,10,opt,name=nodeName"`
 
 	// TODO
-	ExposedPorts []string `json:"exposedports,omitempty"`
+	ExposedPorts []string `json:"exposedPorts,omitempty"`
 
 	// TODO
-	BindPorts map[string]string `json:"bindports,omitempty"`
+	BindPorts map[string]string `json:"bindPorts,omitempty"`
 }
 
 // RestartPolicy describes how the container should be restarted.
@@ -128,6 +176,14 @@ type PodStatus struct {
 	ContainerStatuses []ContainerStatus `json:"containerStatuses,omitempty" protobuf:"bytes,8,rep,name=containerStatuses"`
 }
 
+func (p *PodStatus) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &p)
+}
+
+func (p *PodStatus) JsonMarshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
 // PodPhase is a label for the condition of a pod at the current time.
 // +enum
 type PodPhase string
@@ -152,3 +208,16 @@ const (
 	// Deprecated: It isn't being set since 2015 (74da3b14b0c0f658b3bb8d2def5094686d0e9095)
 	PodUnknown PodPhase = "Unknown"
 )
+
+// PodTemplateSpec describes the data a pod should have when created from a template
+type PodTemplateSpec struct {
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	meta.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Specification of the desired behavior of the pod.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+	// +optional
+	Spec PodSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+}
