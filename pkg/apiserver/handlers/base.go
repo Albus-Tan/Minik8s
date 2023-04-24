@@ -181,9 +181,19 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 			}
 			switch ev.Type {
 			case etcd.EventTypeDelete:
+				_, err = fmt.Fprintf(c.Writer, "%v\n", val)
+				if err != nil {
+					log.Printf("[apiserver][HandleWatch%v] fail to write to client, cancel watch task\n", ty)
+					cancel()
+					c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+					return
+				}
+				flusher.Flush()
+
 				// cancel watch after delete
 				log.Printf("[apiserver] %v delete, cancel watch task\n", ty)
 				cancel()
+
 				c.JSON(http.StatusOK, gin.H{"status": "OK"})
 				return
 			case etcd.EventTypePut:
