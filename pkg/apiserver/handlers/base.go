@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"io"
 	"log"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/apiserver/etcd"
+	"minik8s/utils"
 	"net/http"
 )
 
@@ -31,10 +31,13 @@ func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
 	//log.Printf("[apiserver] JsonUnmarshal buf %v", string(buf))
 
 	// generate uuid for {ApiObject}
-	uuidV4 := uuid.New()
-	objectUID := uuidV4.String()
+	objectUID := utils.GenerateUID()
 	log.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
 	newObject.SetUID(objectUID)
+	// set object ResourceVersion
+	createVersion := etcd.Rvm.GetNextResourceVersion()
+	newObject.SetResourceVersion(createVersion)
+
 	buf, err = newObject.JsonMarshal()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
@@ -42,18 +45,21 @@ func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 	//log.Printf("[apiserver] JsonMarshal buf %v", string(buf))
 
-	// put {ApiObject} info into etcd
-	err = etcd.Put(c.Request.URL.Path+objectUID, string(buf))
+	etcdPath := c.Request.URL.Path + objectUID
+
+	// put/update {ApiObject} info into etcd
+	err, newVersion := etcd.Put(etcdPath, string(buf))
+	log.Printf("[apiserver] generate new %v: json ResourceVersion %v, current ResourceVersion %v", ty, createVersion, newVersion)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"status": "OK", "uid": objectUID})
+		c.JSON(http.StatusOK, gin.H{"status": "OK", "uid": objectUID, "resourceVersion": createVersion})
 	}
 }
 
 func handlePutObject(c *gin.Context, ty core.ApiObjectType) {
 	// check if {ApiObject} exist
-	has, err := etcd.Has(c.Request.URL.Path)
+	has, versionHas, err := etcd.HasWithVersion(c.Request.URL.Path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -70,12 +76,38 @@ func handlePutObject(c *gin.Context, ty core.ApiObjectType) {
 		return
 	}
 
-	// put/update {ApiObject} info into etcd
-	err = etcd.Put(c.Request.URL.Path, string(buf))
+	// parse request body from json to core.{ApiObject} type
+	newObject := core.CreateApiObject(ty)
+	err = newObject.JsonUnmarshal(buf)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// get object old version
+	oldVersion := newObject.GetResourceVersion()
+	if versionHas != oldVersion {
+		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version %v unmatch current version %v, %v has been modified by others, please GET for the new version and retry PUT operation", oldVersion, versionHas, ty)})
+		return
+	}
+
+	// update object new version
+	newObject.SetResourceVersion(etcd.Rvm.GetNextResourceVersion())
+
+	buf, err = newObject.JsonMarshal()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+
+	// put/update {ApiObject} info into etcd
+	err, newVersion, success := etcd.CheckVersionPut(c.Request.URL.Path, string(buf), oldVersion)
+	if !success {
+		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version unmatch current version, %v has been modified by others, please GET for the new version and retry PUT operation", ty)})
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"status": "OK"})
+		c.JSON(http.StatusOK, gin.H{"status": "OK", "resourceVersion": newVersion})
 	}
 }
 
@@ -248,7 +280,7 @@ func handleGetObjectStatus(c *gin.Context, ty core.ApiObjectType, resourceURL st
 
 func handlePutObjectStatus(c *gin.Context, ty core.ApiObjectType, etcdURL string) {
 
-	has, err := etcd.Has(etcdURL)
+	has, versionHas, err := etcd.HasWithVersion(etcdURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -294,6 +326,16 @@ func handlePutObjectStatus(c *gin.Context, ty core.ApiObjectType, etcdURL string
 		return
 	}
 
+	// get object old version
+	oldVersion := object.GetResourceVersion()
+	if versionHas != oldVersion {
+		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version unmatch current version, %v has been modified by others, please GET for the new version and retry PUT operation", ty)})
+		return
+	}
+
+	// update object new version
+	object.SetResourceVersion(etcd.Rvm.GetNextResourceVersion())
+
 	// marshal new object
 	buf, err := object.JsonMarshal()
 	if err != nil {
@@ -302,10 +344,12 @@ func handlePutObjectStatus(c *gin.Context, ty core.ApiObjectType, etcdURL string
 	}
 
 	// put/update {ApiObject} info into etcd
-	err = etcd.Put(etcdURL, string(buf))
-	if err != nil {
+	err, newVersion, success := etcd.CheckVersionPut(etcdURL, string(buf), oldVersion)
+	if !success {
+		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version unmatch current version, %v has been modified by others, please GET for the new version and retry PUT operation", ty)})
+	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"status": "OK"})
+		c.JSON(http.StatusOK, gin.H{"status": "OK", "resourceVersion": newVersion})
 	}
 }

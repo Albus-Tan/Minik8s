@@ -29,6 +29,14 @@ type Pod struct {
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (p *Pod) SetResourceVersion(version string) {
+	p.ObjectMeta.ResourceVersion = version
+}
+
+func (p *Pod) GetResourceVersion() string {
+	return p.ObjectMeta.ResourceVersion
+}
+
 func (p *Pod) SetStatus(s IApiObjectStatus) bool {
 	status, ok := s.(*PodStatus)
 	if ok {

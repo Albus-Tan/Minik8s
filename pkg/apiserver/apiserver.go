@@ -47,3 +47,13 @@ func (a apiServer) Run() {
 //	log.Printf("[apiserver] expected %v, actual %v\n", "", res)
 //	//_ = etcdClear()
 //}
+
+//func (a apiServer) etcdCheckVersionPutTest() {
+//	log.Printf("[apiserver] start etcdCheckVersionPutTest\n")
+//
+//	// _ = etcd.Put("123444", "11111")
+//	_, _ = etcd.CheckVersionPut("123444", "12314333eee", "201")
+//	_, version, _ := etcd.GetWithVersion("123444")
+//	_, _ = etcd.CheckVersionPut("123444", "123", version)
+//	_, _, _ = etcd.GetWithVersion("123444")
+//}

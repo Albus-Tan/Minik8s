@@ -9,13 +9,14 @@ import (
 
 func TestAll(t *testing.T) {
 	t.Run("TestInit", TestInit)
+	t.Run("TestClear", TestClear)
 	t.Run("TestPut", TestPut)
 	t.Run("TestHas", TestHas)
 	t.Run("TestGet", TestGet)
 	t.Run("TestGetAllWithPrefix", TestGetAllWithPrefix)
 	t.Run("TestDelete", TestDelete)
 	t.Run("TestClear", TestClear)
-	t.Run("TestInit", TestClose)
+	t.Run("TestClose", TestClose)
 }
 
 func TestInit(t *testing.T) {
@@ -60,7 +61,7 @@ func TestPut(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := Put(tt.args.key, tt.args.value); (err != nil) != tt.wantErr {
+			if err, _ := Put(tt.args.key, tt.args.value); (err != nil) != tt.wantErr {
 				t.Errorf("Put() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -29,6 +29,14 @@ type Service struct {
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (s *Service) SetResourceVersion(version string) {
+	s.ObjectMeta.ResourceVersion = version
+}
+
+func (s *Service) GetResourceVersion() string {
+	return s.ObjectMeta.ResourceVersion
+}
+
 func (s *Service) SetStatus(st IApiObjectStatus) bool {
 	status, ok := st.(*ServiceStatus)
 	if ok {

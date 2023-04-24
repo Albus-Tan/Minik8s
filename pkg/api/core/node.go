@@ -28,6 +28,14 @@ type Node struct {
 	Status NodeStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (n *Node) SetResourceVersion(version string) {
+	n.ObjectMeta.ResourceVersion = version
+}
+
+func (n *Node) GetResourceVersion() string {
+	return n.ObjectMeta.ResourceVersion
+}
+
 func (n *Node) SetStatus(s IApiObjectStatus) bool {
 	status, ok := s.(*NodeStatus)
 	if ok {

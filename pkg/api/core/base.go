@@ -23,6 +23,8 @@ type IApiObject interface {
 	JsonMarshalStatus() ([]byte, error)
 	SetStatus(s IApiObjectStatus) bool
 	GetStatus() IApiObjectStatus
+	GetResourceVersion() string
+	SetResourceVersion(version string)
 }
 
 type IApiObjectStatus interface {
