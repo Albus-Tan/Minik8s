@@ -33,7 +33,7 @@ var getCmd = &cobra.Command{
 			fmt.Println(res)
 		case "pod":
 			//get localhost:8080/api/pod:name
-			if len(s) < 2 {
+			if len(args) < 2 {
 				fmt.Println("please input the pod name")
 				return
 			}
