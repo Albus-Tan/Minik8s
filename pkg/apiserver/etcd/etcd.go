@@ -6,6 +6,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"log"
+	"minik8s/config"
 	"strconv"
 	"sync"
 	"time"
@@ -19,7 +20,7 @@ const (
 )
 
 var (
-	etcdEndpoint   = "localhost:2379"
+	etcdEndpoint   = config.EtcdHost + config.EtcdPort
 	requestTimeout = time.Second
 	etcdConfig     clientv3.Config
 	etcdClient     *clientv3.Client

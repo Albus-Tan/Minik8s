@@ -26,9 +26,6 @@ func (h httpServer) Run(addr string) (err error) {
 }
 
 func (h httpServer) BindHandlers() {
-	//TODO implement me
-
-	//h.router.GET("/test", handleGetTest)
 
 	/*--------------------- Pod ---------------------*/
 	// Create a Pod
