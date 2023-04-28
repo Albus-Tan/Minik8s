@@ -1,16 +1,24 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python
+import re
+import sys
 
 # regex to validate in commit msg
-commit_regex="^(build|ci|docs|feat|fix|perf|refactor|test)(\(.+\))?:\s(.{1,50})(?:\n\n(.+))?$"
-error_msg="""
+commit_regex = r"^(build|ci|docs|feat|fix|perf|refactor|test)" \
+               r"(\(.+\))?: (.{1,50})" \
+               r"(?:\n\n(.+))?$"
+error_msg = """\
 Aborting commit. Your commit message is violating Commit Style:
 
 <type>: <summary(1~50 word)>
 <newline>
 <body>
 """
+COMMIT_MSG_FILE = sys.argv[1]
+COMMIT_MSG = open(COMMIT_MSG_FILE).read().strip()
 
-if ! pcre2grep -M "$commit_regex" "$1"; then
-    echo "$error_msg" >&2
-    exit 1
-fi
+if len(sys.argv) != 2:
+    print("commit-msg should be used as git hooks")
+if not re.match(commit_regex, COMMIT_MSG):
+    print(error_msg)
+    exit(-1)
+exit(0)
