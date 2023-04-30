@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"minik8s/pkg/api"
 	"minik8s/pkg/api/types"
 )
 
@@ -58,4 +59,30 @@ func CreateApiObjectStatus(ty ApiObjectType) IApiObjectStatus {
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
 	return nil
+}
+
+func GetApiObjectsURL(ty ApiObjectType) string {
+	switch ty {
+	case PodObjectType:
+		return api.PodsURL
+	case ServiceObjectType:
+		return api.ServicesURL
+	case NodeObjectType:
+		return api.NodesURL
+	default:
+		panic(fmt.Sprintf("No ApiObjectType %v", ty))
+	}
+}
+
+func GetWatchApiObjectsURL(ty ApiObjectType) string {
+	switch ty {
+	case PodObjectType:
+		return api.WatchPodsURL
+	case ServiceObjectType:
+		return api.WatchServicesURL
+	case NodeObjectType:
+		return api.WatchNodesURL
+	default:
+		panic(fmt.Sprintf("No ApiObjectType %v", ty))
+	}
 }

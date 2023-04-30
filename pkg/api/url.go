@@ -28,3 +28,10 @@ const (
 	WatchServiceURL  = "/api/watch/services/:name"
 	ServiceStatusURL = "/api/services/:name/status"
 )
+
+// ------------------ Test API ---------------------
+
+const (
+	TestsURL = "/api/tests/"
+	TestURL  = "/api/tests/:name"
+)

@@ -55,3 +55,13 @@ func PutJson(URL string, v interface{}) (*http.Response, error) {
 
 	return cli.Do(req)
 }
+
+func PutBytes(URL string, content []byte) (*http.Response, error) {
+	cli := &http.Client{}
+	req, err := http.NewRequest(http.MethodPut, URL, bytes.NewReader(content))
+	if err != nil {
+		log.Println("[utils][http][PutBytes] http.NewRequest create failed", err)
+		return nil, err
+	}
+	return cli.Do(req)
+}

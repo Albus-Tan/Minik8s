@@ -14,3 +14,7 @@ func Version() string {
 func ApiUrl() string {
 	return HttpScheme + Host + Port + "/api/"
 }
+
+func ApiServerUrl() string {
+	return HttpScheme + Host + Port
+}

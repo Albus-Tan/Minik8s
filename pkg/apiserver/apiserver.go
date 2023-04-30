@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"log"
+	"minik8s/config"
 	"minik8s/pkg/apiserver/etcd"
 )
 
@@ -29,7 +30,7 @@ func (a apiServer) Run() {
 	a.httpServer.BindHandlers()
 
 	// Listen and Server in 0.0.0.0:8080
-	err := a.httpServer.Run(":8080")
+	err := a.httpServer.Run(config.Port)
 	if err != nil {
 		log.Printf("[apiserver] httpserver start FAILED\n")
 		log.Fatal(err)

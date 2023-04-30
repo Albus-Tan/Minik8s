@@ -34,6 +34,16 @@ func PostString(URL string, content string) (*http.Response, error) {
 	return cli.Do(req)
 }
 
+func PostBytes(URL string, content []byte) (*http.Response, error) {
+	cli := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(content))
+	if err != nil {
+		log.Println("[utils][http][PostBytes] http.NewRequest create failed", err)
+		return nil, err
+	}
+	return cli.Do(req)
+}
+
 func PostForm(URL string, form map[string]string) string {
 	values := url.Values{}
 	for key, value := range form {
