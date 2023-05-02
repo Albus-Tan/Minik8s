@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
+	"strconv"
 )
 
 // Service is a named abstraction of software service (for example, mysql) consisting of local port
@@ -27,6 +28,10 @@ type Service struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (s *Service) CreateFromEtcdString(str string) error {
+	return s.JsonUnmarshal([]byte(str))
 }
 
 func (s *Service) SetResourceVersion(version string) {
@@ -208,5 +213,52 @@ func (s *ServiceStatus) JsonUnmarshal(data []byte) error {
 }
 
 func (s *ServiceStatus) JsonMarshal() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+// ServiceList holds a list of services.
+type ServiceList struct {
+	meta.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	// +optional
+	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of services
+	Items []Service `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (s *ServiceList) AppendItemsFromStr(objectStrs []string) error {
+	for _, obj := range objectStrs {
+		object := &Service{}
+		err := object.JsonUnmarshal([]byte(obj))
+		if err != nil {
+			return err
+		}
+		s.Items = append(s.Items, *object)
+	}
+	return nil
+}
+
+func (s *ServiceList) AddItemFromStr(objectStr string) error {
+	object := &Service{}
+	buf, err := strconv.Unquote(objectStr)
+	err = object.JsonUnmarshal([]byte(buf))
+	if err != nil {
+		return err
+	}
+	s.Items = append(s.Items, *object)
+	return nil
+}
+
+func (s *ServiceList) GetItems() any {
+	return s.Items
+}
+
+func (s *ServiceList) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &s)
+}
+
+func (s *ServiceList) JsonMarshal() ([]byte, error) {
 	return json.Marshal(s)
 }

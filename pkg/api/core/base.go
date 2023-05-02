@@ -26,6 +26,15 @@ type IApiObject interface {
 	GetStatus() IApiObjectStatus
 	GetResourceVersion() string
 	SetResourceVersion(version string)
+	CreateFromEtcdString(str string) error
+}
+
+type IApiObjectList interface {
+	JsonUnmarshal(data []byte) error
+	JsonMarshal() ([]byte, error)
+	AddItemFromStr(objectStr string) error
+	AppendItemsFromStr(objectStrs []string) error
+	GetItems() any
 }
 
 type IApiObjectStatus interface {
@@ -41,6 +50,20 @@ func CreateApiObject(ty ApiObjectType) IApiObject {
 		return &Service{}
 	case NodeObjectType:
 		return &Node{}
+	default:
+		panic(fmt.Sprintf("No ApiObjectType %v", ty))
+	}
+	return nil
+}
+
+func CreateApiObjectList(ty ApiObjectType) IApiObjectList {
+	switch ty {
+	case PodObjectType:
+		return &PodList{}
+	case ServiceObjectType:
+		return &ServiceList{}
+	case NodeObjectType:
+		return &NodeList{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}

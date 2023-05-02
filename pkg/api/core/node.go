@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
+	"strconv"
 )
 
 // Node is a worker node in Kubernetes.
@@ -26,6 +27,10 @@ type Node struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status NodeStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (n *Node) CreateFromEtcdString(str string) error {
+	return n.JsonUnmarshal([]byte(str))
 }
 
 func (n *Node) SetResourceVersion(version string) {
@@ -118,6 +123,7 @@ func (n *NodeStatus) JsonMarshal() ([]byte, error) {
 }
 
 // +enum
+
 type NodePhase string
 
 // These are the valid phases of node.
@@ -181,3 +187,50 @@ const (
 	// be a listed NodeExternalIP address.
 	NodeExternalDNS NodeAddressType = "ExternalDNS"
 )
+
+// NodeList is the whole list of all Nodes which have been registered with master.
+type NodeList struct {
+	meta.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	// +optional
+	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of nodes
+	Items []Node `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (n *NodeList) AppendItemsFromStr(objectStrs []string) error {
+	for _, obj := range objectStrs {
+		object := &Node{}
+		err := object.JsonUnmarshal([]byte(obj))
+		if err != nil {
+			return err
+		}
+		n.Items = append(n.Items, *object)
+	}
+	return nil
+}
+
+func (n *NodeList) AddItemFromStr(objectStr string) error {
+	object := &Node{}
+	buf, err := strconv.Unquote(objectStr)
+	err = object.JsonUnmarshal([]byte(buf))
+	if err != nil {
+		return err
+	}
+	n.Items = append(n.Items, *object)
+	return nil
+}
+
+func (n *NodeList) GetItems() any {
+	return n.Items
+}
+
+func (n *NodeList) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &n)
+}
+
+func (n *NodeList) JsonMarshal() ([]byte, error) {
+	return json.Marshal(n)
+}

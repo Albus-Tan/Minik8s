@@ -9,7 +9,6 @@ import (
 	"minik8s/pkg/api/core"
 	httpclient "minik8s/pkg/client/http"
 	"net/http"
-	"strconv"
 )
 
 const HttpStatusNotSend = 0
@@ -131,13 +130,7 @@ func (c *RESTClient) Get(name string) (core.IApiObject, error) {
 		return nil, err
 	}
 
-	buf, err := strconv.Unquote(string(content))
-	if err != nil {
-		log.Println("[RESTClient] http.Get strconv.Unquote failed", err)
-		return nil, err
-	}
-
-	err = object.JsonUnmarshal([]byte(buf))
+	err = object.JsonUnmarshal(content)
 	if err != nil {
 		log.Printf("[RESTClient] http.Get response json.Unmarshal failed, err %v\n", err)
 		return nil, err
@@ -146,7 +139,7 @@ func (c *RESTClient) Get(name string) (core.IApiObject, error) {
 	return object, nil
 }
 
-func (c *RESTClient) GetAll() (objects []core.IApiObject, err error) {
+func (c *RESTClient) GetAll() (objectList core.IApiObjectList, err error) {
 	resourceURL := c.URL()
 
 	resp, err := http.Get(resourceURL)
@@ -161,28 +154,23 @@ func (c *RESTClient) GetAll() (objects []core.IApiObject, err error) {
 		return nil, err
 	}
 
+	objectList = core.CreateApiObjectList(c.resourceType)
 	if len(content) == 0 {
-		return objects, nil
+		return objectList, nil
 	}
 
-	buf, err := strconv.Unquote(string(content))
+	err = objectList.JsonUnmarshal(content)
 	if err != nil {
-		log.Println("[RESTClient] http.GetAll strconv.Unquote failed", err)
+		log.Printf("[RESTClient] http.Get response json.Unmarshal failed, err %v\n", err)
 		return nil, err
 	}
 
-	// TODO: Bug in json.Unmarshal list
-	//var objectStrings []string
-	//err = json.Unmarshal([]byte(buf), &objectStrings)
-	//for _, objectString := range objectStrings {
-	//
-	//}
 	if err != nil {
 		log.Println("[RESTClient] http.GetAll response json.Unmarshal objects list failed", err)
 		return nil, err
 	}
 
-	return objects, nil
+	return objectList, nil
 }
 
 // Delete begins a DELETE request.

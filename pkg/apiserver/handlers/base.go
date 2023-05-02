@@ -133,13 +133,19 @@ func handleDeleteObject(c *gin.Context, ty core.ApiObjectType) {
 }
 
 func handleGetObject(c *gin.Context, ty core.ApiObjectType) {
-	object, err := etcd.Get(c.Request.URL.Path)
+	objectStr, err := etcd.Get(c.Request.URL.Path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
-	} else if object == etcd.EmptyGetResult {
+	} else if objectStr == etcd.EmptyGetResult {
 		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": fmt.Sprintf("No such %v", ty)})
 	} else {
-		c.JSON(http.StatusOK, object)
+		object := core.CreateApiObject(ty)
+		err = object.CreateFromEtcdString(objectStr)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, object)
+		}
 	}
 }
 
@@ -148,7 +154,14 @@ func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(http.StatusOK, objects)
+		objectList := core.CreateApiObjectList(ty)
+		err := objectList.AppendItemsFromStr(objects)
+		if err != nil {
+			log.Println("[apiserver] handleGetObjects objectList.AppendItemsFromStr failed", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, objectList)
 	}
 }
 
