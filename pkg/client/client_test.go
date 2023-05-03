@@ -2,7 +2,9 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/client/listwatch"
 	"os"
 	"testing"
 )
@@ -85,4 +87,36 @@ func TestDeletePod(t *testing.T) {
 		return
 	}
 	fmt.Printf("resp %v\n", res)
+}
+
+func TestWatchAllPods(t *testing.T) {
+	rc, err := NewRESTClient(core.PodObjectType)
+	if err != nil {
+		return
+	}
+
+	lw := listwatch.NewListWatchFromClient(rc)
+
+	wi, err := lw.Watch()
+	if err != nil {
+		return
+	}
+
+	sum := 0
+	for {
+		if sum >= 3 {
+			break
+		} else {
+			select {
+			case e := <-wi.ResultChan():
+				log.Printf("[RESTClient] event %v\n", e)
+				log.Printf("[RESTClient] event object %v\n", e.Object)
+				sum++
+			}
+		}
+	}
+
+	// stop watch
+	wi.Stop()
+
 }

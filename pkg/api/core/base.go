@@ -10,6 +10,7 @@ type ApiObjectType string
 
 // These are the valid ApiObjectType.
 const (
+	ErrorObjectType   ApiObjectType = "Error"
 	PodObjectType     ApiObjectType = "Pod"
 	ServiceObjectType ApiObjectType = "Service"
 	NodeObjectType    ApiObjectType = "Node"
@@ -50,6 +51,8 @@ func CreateApiObject(ty ApiObjectType) IApiObject {
 		return &Service{}
 	case NodeObjectType:
 		return &Node{}
+	case ErrorObjectType:
+		return &ErrorApiObject{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}

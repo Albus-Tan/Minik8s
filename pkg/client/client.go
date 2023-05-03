@@ -1,29 +1,22 @@
 package client
 
 import (
+	"bufio"
+	"context"
 	"errors"
 	"io"
 	"log"
 	"minik8s/config"
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/watch"
 	httpclient "minik8s/pkg/client/http"
 	"net/http"
+	"time"
 )
 
 const HttpStatusNotSend = 0
-
-// Interface captures the set of operations for generically interacting with Kubernetes REST apis.
-type Interface interface {
-	Post(object core.IApiObject) (int, error)
-	Put(name string, object core.IApiObject) (int, error)
-	Get(name string) (core.IApiObject, error)
-	GetAll() (objects []core.IApiObject, err error)
-	Delete(name string) (string, error)
-	// WatchAll()
-	URL() string
-	WatchURL() string
-}
+const ReconnectInterval = 5 // watch reconnect seconds
 
 // RESTClient This client performs generic REST functions such as Get, Put, Post, and Delete on specified paths.
 type RESTClient struct {
@@ -52,6 +45,10 @@ func (c *RESTClient) WatchURL() string {
 
 func (c *RESTClient) createApiObject() core.IApiObject {
 	return core.CreateApiObject(c.resourceType)
+}
+
+func (c *RESTClient) createApiObjectStatus() core.IApiObjectStatus {
+	return core.CreateApiObjectStatus(c.resourceType)
 }
 
 // Post begins a POST request.
@@ -139,6 +136,31 @@ func (c *RESTClient) Get(name string) (core.IApiObject, error) {
 	return object, nil
 }
 
+func (c *RESTClient) GetStatus(name string) (core.IApiObjectStatus, error) {
+	resourceURL := c.URL() + name + api.StatusSuffix
+	objectStatus := c.createApiObjectStatus()
+
+	resp, err := http.Get(resourceURL)
+	if err != nil {
+		log.Println("[RESTClient] http.GetStatus failed", err)
+		return nil, err
+	}
+
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("[RESTClient] http.GetStatus response io.ReadAll(resp.Body) failed", err)
+		return nil, err
+	}
+
+	err = objectStatus.JsonUnmarshal(content)
+	if err != nil {
+		log.Printf("[RESTClient] http.GetStatus response json.Unmarshal failed, err %v\n", err)
+		return nil, err
+	}
+
+	return objectStatus, nil
+}
+
 func (c *RESTClient) GetAll() (objectList core.IApiObjectList, err error) {
 	resourceURL := c.URL()
 
@@ -200,43 +222,22 @@ func (c *RESTClient) Delete(name string) (string, error) {
 	return string(body), nil
 }
 
-//
-//func (c *RESTClient) WatchAll(ctx context.Context) {
-//	resourceURL := c.WatchURL()
-//
-//	resp, err := http.Get(resourceURL)
-//
-//	if err != nil {
-//		log.Println("[RESTClient] WatchAll Failed: ", err)
-//		// sleep some time before retry
-//		time.Sleep(time.Second * time.Duration(constants.ReconnectInterval))
-//		errChan <- err.Error()
-//		return
-//	}
-//
-//	reader := bufio.NewReader(resp.Body)
-//	for {
-//		select {
-//		case <-ctx.Done():
-//			return
-//		default:
-//			buf, err := reader.ReadBytes(byte(constants.EOF))
-//
-//			if err != nil {
-//				klog.Errorf("Watch Pods Error: %s", err)
-//				errChan <- err.Error()
-//				return
-//			}
-//
-//			buf[len(buf)-1] = '\n'
-//			req := &httpresponse.PodChangeRequest{}
-//			err = json.Unmarshal(buf, req)
-//
-//			if err != nil {
-//				klog.Errorf("Unmarshal APIServer Data Failed: %s", err.Error())
-//			} else {
-//				handlePodChangeRequest(kl, req)
-//			}
-//		}
-//	}
-//}
+func (c *RESTClient) WatchAll(ctx context.Context) (watch.Interface, error) {
+	resourceURL := c.WatchURL()
+	resp, err := http.Get(resourceURL)
+
+	if err != nil {
+		log.Println("[RESTClient] WatchAll Failed: ", err)
+		// sleep some time before retry
+		time.Sleep(time.Second * time.Duration(ReconnectInterval))
+		return nil, err
+	}
+
+	reader := bufio.NewReader(resp.Body)
+	decoder := watch.NewEtcdEventDecoder(reader, c.resourceType)
+	reporter := watch.NewDefaultReporter()
+	streamWatcher := watch.NewStreamWatcher(decoder, reporter)
+
+	return streamWatcher, nil
+
+}

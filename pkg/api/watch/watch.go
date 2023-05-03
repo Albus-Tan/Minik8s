@@ -1,6 +1,8 @@
 package watch
 
-import "minik8s/pkg/api/core"
+import (
+	"minik8s/pkg/api/core"
+)
 
 // Interface can be implemented by anything that knows how to watch and report changes.
 type Interface interface {
@@ -13,6 +15,8 @@ type Interface interface {
 	// release any resources used by the watch.
 	ResultChan() <-chan Event
 }
+
+const SeparationChar = '\n'
 
 // EventType defines the possible types of events.
 type EventType string
@@ -32,7 +36,7 @@ var (
 // Event represents a single event to a watched resource.
 // +k8s:deepcopy-gen=true
 type Event struct {
-	Type EventType
+	Type EventType `json:"type"`
 
 	// Object is:
 	//  * If Type is Added or Modified: the new state of the object.
@@ -43,5 +47,16 @@ type Event struct {
 	//    nor miss any events.
 	//  * If Type is Error: *api.Status is recommended; other types may make sense
 	//    depending on context.
-	Object core.IApiObject
+	Object core.IApiObject `json:"object,omitempty"`
+
+	// key is the key in bytes. An empty key is not allowed.
+	Key string `json:"key,omitempty"`
+	// create_revision is the revision of last creation on this key.
+	CreateRevision int64 `protobuf:"varint,2,opt,name=create_revision,json=createRevision,proto3" json:"create_revision,omitempty"`
+	// mod_revision is the revision of last modification on this key.
+	ModRevision int64 `protobuf:"varint,3,opt,name=mod_revision,json=modRevision,proto3" json:"mod_revision,omitempty"`
+	// version is the version of the key. A deletion resets
+	// the version to zero and any modification of the key
+	// increases its version.
+	Version int64 `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
 }

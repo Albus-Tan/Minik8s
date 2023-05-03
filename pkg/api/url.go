@@ -1,5 +1,7 @@
 package api
 
+const StatusSuffix = "/status"
+
 // ------------------ REST API ---------------------
 // Pod
 const (
