@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/watch"
@@ -13,9 +12,11 @@ type Interface interface {
 	Put(name string, object core.IApiObject) (int, *api.PutResponse, error)
 	Get(name string) (core.IApiObject, error)
 	GetStatus(name string) (core.IApiObjectStatus, error)
+	PutStatus(name string, object core.IApiObjectStatus) (int, *api.PutResponse, error)
 	GetAll() (objectList core.IApiObjectList, err error)
 	Delete(name string) (string, error)
-	WatchAll(ctx context.Context) (watch.Interface, error)
+	WatchAll() (watch.Interface, error)
+	Watch(name string) (watch.Interface, error)
 	URL() string
 	WatchURL() string
 }

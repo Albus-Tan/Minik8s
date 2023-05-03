@@ -2,7 +2,6 @@ package client
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"io"
 	"log"
@@ -27,6 +26,7 @@ type RESTClient struct {
 
 // NewRESTClient creates a new RESTClient. This client performs generic REST functions
 // such as Get, Put, Post, and Delete on specified paths.
+// Different type of resource need to use different RESTClient
 func NewRESTClient(ty core.ApiObjectType) (*RESTClient, error) {
 	return &RESTClient{
 		resourceType: ty,
@@ -161,6 +161,34 @@ func (c *RESTClient) GetStatus(name string) (core.IApiObjectStatus, error) {
 	return objectStatus, nil
 }
 
+func (c *RESTClient) PutStatus(name string, object core.IApiObjectStatus) (int, *api.PutResponse, error) {
+	resourceURL := c.URL() + name + api.StatusSuffix
+	content, err := object.JsonMarshal()
+	if err != nil {
+		log.Println("[RESTClient] http.PutStatus JsonMarshal failed", err)
+		return HttpStatusNotSend, nil, err
+	}
+
+	resp, err := httpclient.PutBytes(resourceURL, content)
+	if err != nil {
+		log.Println("[RESTClient] http.PutStatus failed", err)
+		return HttpStatusNotSend, nil, err
+	}
+
+	putResp := &api.PutResponse{}
+	err = putResp.FillResponse(resp)
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return resp.StatusCode, putResp, nil
+	} else {
+		log.Println("[RESTClient] http.PutStatus StatusCode not http.StatusOK", err)
+		return resp.StatusCode, putResp, errors.New("StatusCode not 200")
+	}
+}
+
 func (c *RESTClient) GetAll() (objectList core.IApiObjectList, err error) {
 	resourceURL := c.URL()
 
@@ -222,7 +250,7 @@ func (c *RESTClient) Delete(name string) (string, error) {
 	return string(body), nil
 }
 
-func (c *RESTClient) WatchAll(ctx context.Context) (watch.Interface, error) {
+func (c *RESTClient) WatchAll() (watch.Interface, error) {
 	resourceURL := c.WatchURL()
 	resp, err := http.Get(resourceURL)
 
@@ -239,5 +267,25 @@ func (c *RESTClient) WatchAll(ctx context.Context) (watch.Interface, error) {
 	streamWatcher := watch.NewStreamWatcher(decoder, reporter)
 
 	return streamWatcher, nil
+}
 
+func (c *RESTClient) Watch(name string) (watch.Interface, error) {
+	resourceURL := c.WatchURL() + name
+	resp, err := http.Get(resourceURL)
+
+	if err != nil {
+		log.Printf("[RESTClient] Watch %v %v Failed: %v\n", c.resourceType, name, err)
+		// sleep some time before retry
+		time.Sleep(time.Second * time.Duration(ReconnectInterval))
+		return nil, err
+	}
+
+	log.Printf("[RESTClient] Watch %v %v start\n", c.resourceType, name)
+
+	reader := bufio.NewReader(resp.Body)
+	decoder := watch.NewEtcdEventDecoder(reader, c.resourceType)
+	reporter := watch.NewDefaultReporter()
+	streamWatcher := watch.NewStreamWatcher(decoder, reporter)
+
+	return streamWatcher, nil
 }
