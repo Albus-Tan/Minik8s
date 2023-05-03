@@ -7,6 +7,11 @@ const (
 	latestVersion = "v1.0.1"
 )
 
+const (
+	EtcdHost = "111.186.56.24"
+	EtcdPort = ":2380"
+)
+
 func Version() string {
 	return latestVersion
 }

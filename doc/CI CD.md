@@ -26,6 +26,8 @@ cat /var/jenkins_home/secrets/initialAdminPassword
 
 具体流程见 Ref
 
+Reference: https://zhuanlan.zhihu.com/p/90612874
+
 - 注意 WebHooks 中需要使用公网 IP，百度中搜索 IP 即可知道本机公网 IP
 
 # Ref
