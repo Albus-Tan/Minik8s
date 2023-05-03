@@ -1,7 +1,6 @@
 package listwatch
 
 import (
-	"context"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/watch"
@@ -76,7 +75,7 @@ func NewFilteredListWatchFromClient(c client.Interface, optionsModifier func(opt
 	watchFunc := func(options meta.ListOptions) (watch.Interface, error) {
 		options.Watch = true
 		optionsModifier(&options)
-		return c.WatchAll(context.TODO())
+		return c.WatchAll()
 	}
 	return &ListWatch{ListFunc: listFunc, WatchFunc: watchFunc}
 }
