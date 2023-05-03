@@ -124,3 +124,60 @@ type LabelSelector struct {
 	// +optional
 	MatchLabels map[string]string `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
 }
+
+// ListOptions is the query options to a standard REST list call.
+type ListOptions struct {
+	TypeMeta `json:",inline"`
+
+	// A selector to restrict the list of returned objects by their labels.
+	// Defaults to everything.
+	// +optional
+	LabelSelector string `json:"labelSelector,omitempty" protobuf:"bytes,1,opt,name=labelSelector"`
+	// A selector to restrict the list of returned objects by their fields.
+	// Defaults to everything.
+	// +optional
+	FieldSelector string `json:"fieldSelector,omitempty" protobuf:"bytes,2,opt,name=fieldSelector"`
+
+	// +k8s:deprecated=includeUninitialized,protobuf=6
+
+	// Watch for changes to the described resources and return them as a stream of
+	// add, update, and remove notifications. Specify resourceVersion.
+	// +optional
+	Watch bool `json:"watch,omitempty" protobuf:"varint,3,opt,name=watch"`
+
+	// resourceVersion sets a constraint on what resource versions a request may be served from.
+	// See https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-versions for
+	// details.
+	//
+	// Defaults to unset
+	// +optional
+	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,4,opt,name=resourceVersion"`
+
+	// Timeout for the list/watch call.
+	// This limits the duration of the call, regardless of any activity or inactivity.
+	// +optional
+	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty" protobuf:"varint,5,opt,name=timeoutSeconds"`
+}
+
+// ListMeta describes metadata that synthetic resources must have, including lists and
+// various status objects. A resource may have only one of {ObjectMeta, ListMeta}.
+type ListMeta struct {
+
+	// String that identifies the server's internal version of this object that
+	// can be used by clients to determine when objects have changed.
+	// Value must be treated as opaque by clients and passed unmodified back to the server.
+	// Populated by the system.
+	// Read-only.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+	// +optional
+	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,2,opt,name=resourceVersion"`
+
+	// continue may be set if the user set a limit on the number of items returned, and indicates that
+	// the server has more data available. The value is opaque and may be used to issue another request
+	// to the endpoint that served this list to retrieve the next set of available objects. Continuing a
+	// consistent list may not be possible if the server configuration has changed or more than a few
+	// minutes have passed. The resourceVersion field returned when using this continue value will be
+	// identical to the value in the first response, unless you have received this token from an error
+	// message.
+	Continue string `json:"continue,omitempty" protobuf:"bytes,3,opt,name=continue"`
+}

@@ -1,5 +1,7 @@
 package api
 
+const StatusSuffix = "/status"
+
 // ------------------ REST API ---------------------
 // Pod
 const (
@@ -27,4 +29,11 @@ const (
 	WatchServicesURL = "/api/watch/services/"
 	WatchServiceURL  = "/api/watch/services/:name"
 	ServiceStatusURL = "/api/services/:name/status"
+)
+
+// ------------------ Test API ---------------------
+
+const (
+	TestsURL = "/api/tests/"
+	TestURL  = "/api/tests/:name"
 )

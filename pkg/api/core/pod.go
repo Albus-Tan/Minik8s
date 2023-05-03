@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
+	"strconv"
 )
 
 // Pod is a collection of containers that can run on a host. This resource is created
@@ -27,6 +28,10 @@ type Pod struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (p *Pod) CreateFromEtcdString(str string) error {
+	return p.JsonUnmarshal([]byte(str))
 }
 
 func (p *Pod) SetResourceVersion(version string) {
@@ -220,4 +225,52 @@ type PodTemplateSpec struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Spec PodSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+}
+
+// PodList is a list of Pods.
+type PodList struct {
+	meta.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	// +optional
+	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of pods.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items []Pod `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (p *PodList) AppendItemsFromStr(objectStrs []string) error {
+	for _, obj := range objectStrs {
+		object := &Pod{}
+		err := object.JsonUnmarshal([]byte(obj))
+		if err != nil {
+			return err
+		}
+		p.Items = append(p.Items, *object)
+	}
+	return nil
+}
+
+func (p *PodList) AddItemFromStr(objectStr string) error {
+	object := &Pod{}
+	buf, err := strconv.Unquote(objectStr)
+	err = object.JsonUnmarshal([]byte(buf))
+	if err != nil {
+		return err
+	}
+	p.Items = append(p.Items, *object)
+	return nil
+}
+
+func (p *PodList) GetItems() any {
+	return p.Items
+}
+
+func (p *PodList) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &p)
+}
+
+func (p *PodList) JsonMarshal() ([]byte, error) {
+	return json.Marshal(p)
 }

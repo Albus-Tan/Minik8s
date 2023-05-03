@@ -133,13 +133,19 @@ func handleDeleteObject(c *gin.Context, ty core.ApiObjectType) {
 }
 
 func handleGetObject(c *gin.Context, ty core.ApiObjectType) {
-	object, err := etcd.Get(c.Request.URL.Path)
+	objectStr, err := etcd.Get(c.Request.URL.Path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
-	} else if object == etcd.EmptyGetResult {
+	} else if objectStr == etcd.EmptyGetResult {
 		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": fmt.Sprintf("No such %v", ty)})
 	} else {
-		c.JSON(http.StatusOK, object)
+		object := core.CreateApiObject(ty)
+		err = object.CreateFromEtcdString(objectStr)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, object)
+		}
 	}
 }
 
@@ -148,7 +154,14 @@ func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(http.StatusOK, objects)
+		objectList := core.CreateApiObjectList(ty)
+		err := objectList.AppendItemsFromStr(objects)
+		if err != nil {
+			log.Println("[apiserver] handleGetObjects objectList.AppendItemsFromStr failed", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, objectList)
 	}
 }
 
@@ -171,17 +184,16 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 	for {
 		select {
 		case ev := <-ch:
-			data, err := json.Marshal(string(ev.Kv.Value))
-			val := string(data)
-			if err != nil {
-				log.Printf("[apiserver][HandleWatch%v] json parse error, cancel watch task\n", ty)
-				cancel()
-				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
-				return
-			}
 			switch ev.Type {
 			case etcd.EventTypeDelete:
-				_, err = fmt.Fprintf(c.Writer, "%v\n", val)
+				event, err := json.Marshal(ev)
+				if err != nil {
+					log.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
+					cancel()
+					c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+					return
+				}
+				_, err = fmt.Fprintf(c.Writer, "%v\n", string(event))
 				if err != nil {
 					log.Printf("[apiserver][HandleWatch%v] fail to write to client, cancel watch task\n", ty)
 					cancel()
@@ -201,7 +213,16 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 			default:
 				// will not reach here
 			}
-			_, err = fmt.Fprintf(c.Writer, "%v\n", val)
+
+			event, err := json.Marshal(ev)
+			if err != nil {
+				log.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
+				cancel()
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, "%v\n", string(event))
+
 			if err != nil {
 				log.Printf("[apiserver][HandleWatch%v] fail to write to client, cancel watch task\n", ty)
 				cancel()
@@ -228,24 +249,23 @@ func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resource
 	for {
 		select {
 		case ev := <-ch:
-			data, err := json.Marshal(string(ev.Kv.Value))
-			val := string(data)
-			if err != nil {
-				log.Printf("[apiserver][HandleWatch%vs] json parse error, cancel watch task\n", ty)
-				cancel()
-				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
-				return
-			}
 			switch ev.Type {
 			case etcd.EventTypeDelete:
-				// cancel watch after delete
 				log.Printf("[apiserver] %v delete\n", ty)
 			case etcd.EventTypePut:
 				log.Printf("[apiserver] %v put\n", ty)
 			default:
 				// will not reach here
 			}
-			_, err = fmt.Fprintf(c.Writer, "%v\n", val)
+			event, err := json.Marshal(ev)
+			if err != nil {
+				log.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
+				cancel()
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, "%v\n", string(event))
+
 			if err != nil {
 				log.Printf("[apiserver][HandleWatch%vs] fail to write to client, cancel watch task\n", ty)
 				cancel()
@@ -254,7 +274,7 @@ func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resource
 			}
 			flusher.Flush()
 		case <-c.Request.Context().Done():
-			log.Printf("[apiserver] Connection closed, cancel watch task\n")
+			log.Printf("[apiserver][HandleWatch%vs] Connection closed, cancel watch task\n", ty)
 			cancel()
 			c.JSON(http.StatusOK, gin.H{"status": "OK"})
 			return
@@ -278,13 +298,7 @@ func handleGetObjectStatus(c *gin.Context, ty core.ApiObjectType, resourceURL st
 			return
 		}
 
-		objectStatus, err := object.JsonMarshalStatus()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, string(objectStatus))
+		c.JSON(http.StatusOK, object.GetStatus())
 	}
 }
 
