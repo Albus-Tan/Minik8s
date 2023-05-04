@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bufio"
 	"errors"
 	"io"
 	"log"
@@ -261,8 +260,7 @@ func (c *RESTClient) WatchAll() (watch.Interface, error) {
 		return nil, err
 	}
 
-	reader := bufio.NewReader(resp.Body)
-	decoder := watch.NewEtcdEventDecoder(reader, c.resourceType)
+	decoder := watch.NewEtcdEventDecoder(resp.Body, c.resourceType)
 	reporter := watch.NewDefaultReporter()
 	streamWatcher := watch.NewStreamWatcher(decoder, reporter)
 
@@ -282,8 +280,7 @@ func (c *RESTClient) Watch(name string) (watch.Interface, error) {
 
 	log.Printf("[RESTClient] Watch %v %v start\n", c.resourceType, name)
 
-	reader := bufio.NewReader(resp.Body)
-	decoder := watch.NewEtcdEventDecoder(reader, c.resourceType)
+	decoder := watch.NewEtcdEventDecoder(resp.Body, c.resourceType)
 	reporter := watch.NewDefaultReporter()
 	streamWatcher := watch.NewStreamWatcher(decoder, reporter)
 

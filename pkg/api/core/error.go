@@ -8,6 +8,10 @@ type ErrorApiObject struct {
 	msg string
 }
 
+func (e *ErrorApiObject) GetError() error {
+	return e.err
+}
+
 func (e *ErrorApiObject) SetError(err error) {
 	e.err = err
 }
