@@ -274,3 +274,10 @@ func (p *PodList) JsonUnmarshal(data []byte) error {
 func (p *PodList) JsonMarshal() ([]byte, error) {
 	return json.Marshal(p)
 }
+
+func (p *PodList) GetIApiObjectArr() (res []IApiObject) {
+	for _, item := range p.Items {
+		res = append(res, &item)
+	}
+	return res
+}
