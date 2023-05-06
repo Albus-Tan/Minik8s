@@ -10,10 +10,11 @@ type ApiObjectType string
 
 // These are the valid ApiObjectType.
 const (
-	ErrorObjectType   ApiObjectType = "Error"
-	PodObjectType     ApiObjectType = "Pod"
-	ServiceObjectType ApiObjectType = "Service"
-	NodeObjectType    ApiObjectType = "Node"
+	ErrorObjectType      ApiObjectType = "Error"
+	PodObjectType        ApiObjectType = "Pod"
+	ServiceObjectType    ApiObjectType = "Service"
+	ReplicasetObjectType ApiObjectType = "ReplicaSet"
+	NodeObjectType       ApiObjectType = "Node"
 )
 
 type IApiObject interface {
@@ -52,6 +53,8 @@ func CreateApiObject(ty ApiObjectType) IApiObject {
 		return &Service{}
 	case NodeObjectType:
 		return &Node{}
+	case ReplicasetObjectType:
+		return &ReplicaSet{}
 	case ErrorObjectType:
 		return &ErrorApiObject{}
 	default:
@@ -68,6 +71,8 @@ func CreateApiObjectList(ty ApiObjectType) IApiObjectList {
 		return &ServiceList{}
 	case NodeObjectType:
 		return &NodeList{}
+	case ReplicasetObjectType:
+		return &ReplicaSetList{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -82,6 +87,8 @@ func CreateApiObjectStatus(ty ApiObjectType) IApiObjectStatus {
 		return &ServiceStatus{}
 	case NodeObjectType:
 		return &NodeStatus{}
+	case ReplicasetObjectType:
+		return &ReplicaSetStatus{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
