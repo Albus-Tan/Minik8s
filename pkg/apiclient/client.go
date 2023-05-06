@@ -1,4 +1,4 @@
-package client
+package apiclient
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/watch"
-	httpclient "minik8s/pkg/client/http"
+	httpclient "minik8s/pkg/apiclient/http"
 	"net/http"
 	"time"
 )

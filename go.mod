@@ -6,6 +6,7 @@ require (
 	github.com/containerd/containerd v1.7.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/uuid v1.3.0
+	github.com/opencontainers/runtime-spec v1.1.0-rc.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	go.etcd.io/etcd/api/v3 v3.5.8
@@ -59,7 +60,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b // indirect
 	github.com/opencontainers/runc v1.1.4 // indirect
-	github.com/opencontainers/runtime-spec v1.1.0-rc.1 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

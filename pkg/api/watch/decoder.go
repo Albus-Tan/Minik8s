@@ -59,7 +59,11 @@ func (e *EtcdEventDecoder) convertEvent(buf []byte, ty core.ApiObjectType) (*Eve
 
 	switch event.Type {
 	case etcd.EventTypePut:
-		newEvent.Type = Modified
+		if event.Kv.CreateRevision == event.Kv.ModRevision {
+			newEvent.Type = Added
+		} else {
+			newEvent.Type = Modified
+		}
 	case etcd.EventTypeDelete:
 		newEvent.Type = Deleted
 	}

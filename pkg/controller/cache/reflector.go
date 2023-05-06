@@ -5,7 +5,7 @@ import (
 	"log"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/watch"
-	"minik8s/pkg/client/listwatch"
+	"minik8s/pkg/apiclient/listwatch"
 	"time"
 )
 
