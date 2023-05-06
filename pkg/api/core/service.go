@@ -228,6 +228,13 @@ type ServiceList struct {
 	Items []Service `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
+func (s *ServiceList) GetIApiObjectArr() (res []IApiObject) {
+	for _, item := range s.Items {
+		res = append(res, &item)
+	}
+	return res
+}
+
 func (s *ServiceList) AppendItemsFromStr(objectStrs []string) error {
 	for _, obj := range objectStrs {
 		object := &Service{}

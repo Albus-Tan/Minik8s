@@ -36,6 +36,7 @@ type IApiObjectList interface {
 	AddItemFromStr(objectStr string) error
 	AppendItemsFromStr(objectStrs []string) error
 	GetItems() any
+	GetIApiObjectArr() []IApiObject
 }
 
 type IApiObjectStatus interface {

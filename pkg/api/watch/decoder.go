@@ -3,6 +3,7 @@ package watch
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"log"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/apiserver/etcd"
@@ -22,13 +23,15 @@ type Decoder interface {
 }
 
 type EtcdEventDecoder struct {
+	respBody   io.ReadCloser
 	source     *bufio.Reader
 	objectType core.ApiObjectType
 }
 
-func NewEtcdEventDecoder(reader *bufio.Reader, ty core.ApiObjectType) *EtcdEventDecoder {
+func NewEtcdEventDecoder(body io.ReadCloser, ty core.ApiObjectType) *EtcdEventDecoder {
 	d := &EtcdEventDecoder{
-		source:     reader,
+		respBody:   body,
+		source:     bufio.NewReader(body),
 		objectType: ty,
 	}
 	return d
@@ -86,5 +89,9 @@ func (e *EtcdEventDecoder) Decode() (event *Event, err error) {
 }
 
 func (e *EtcdEventDecoder) Close() {
-
+	err := e.respBody.Close()
+	if err != nil {
+		log.Printf("[EtcdEventDecoder] %v respBody.Close Error: %v\n", e.objectType, err)
+		return
+	}
 }

@@ -200,6 +200,13 @@ type NodeList struct {
 	Items []Node `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
+func (n *NodeList) GetIApiObjectArr() (res []IApiObject) {
+	for _, item := range n.Items {
+		res = append(res, &item)
+	}
+	return res
+}
+
 func (n *NodeList) AppendItemsFromStr(objectStrs []string) error {
 	for _, obj := range objectStrs {
 		object := &Node{}
