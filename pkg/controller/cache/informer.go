@@ -4,7 +4,7 @@ import (
 	"log"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/watch"
-	"minik8s/pkg/client/listwatch"
+	"minik8s/pkg/apiclient/listwatch"
 	"time"
 )
 
@@ -14,6 +14,12 @@ type Informer interface {
 	// Run starts and runs the informer, returning after it stops.
 	// The informer will be stopped when stopCh is closed.
 	Run(stopCh <-chan struct{})
+
+	// Get object from internal ThreadSafeStore
+	Get(key string) (item interface{}, exists bool)
+
+	// List objects from internal ThreadSafeStore
+	List() []interface{}
 }
 
 type informer struct {
@@ -29,6 +35,8 @@ type informer struct {
 	// reflector about new events happening
 	transportQueue WorkQueue
 }
+
+const defaultResyncPeriod = 30 * time.Second
 
 // NewInformer returns a Store and a controller for populating the store
 // while also providing event notifications. You should only used the returned
@@ -56,12 +64,32 @@ func NewInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType, resyncP
 	}
 }
 
+func NewDefaultInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType) Informer {
+	s := NewThreadSafeStore()
+	q := NewWorkQueue()
+	return &informer{
+		objType:        objType,
+		reflector:      NewReflector(lw, objType, defaultResyncPeriod, s, q),
+		store:          s,
+		handlers:       []ResourceEventHandler{},
+		transportQueue: q,
+	}
+}
+
 func (i *informer) AddEventHandler(handler ResourceEventHandler) error {
 	i.handlers = append(i.handlers, handler)
 	return nil
 }
 
-func (i *informer) Run(stopCh <-chan struct{}) {
+func (i *informer) Get(key string) (item interface{}, exists bool) {
+	return i.store.Get(key)
+}
+
+func (i *informer) List() []interface{} {
+	return i.store.List()
+}
+
+func (i *informer) run(stopCh <-chan struct{}) {
 
 	syncChan := make(chan bool)
 
@@ -130,6 +158,17 @@ func (i *informer) Run(stopCh <-chan struct{}) {
 		}
 
 	}
+}
+
+func (i *informer) Run(stopCh <-chan struct{}) {
+
+	go func() {
+		log.Printf("[%vInformer] %v informer start\n", i.objType, i.objType)
+		defer log.Printf("[%vInformer] %v informer exit\n", i.objType, i.objType)
+		i.run(stopCh)
+	}()
+	return
+
 }
 
 // ResourceEventHandler can handle notifications for events that
