@@ -19,18 +19,22 @@ type Kubelet interface {
 
 func New() Kubelet {
 
-	podClient, _ := apiclient.NewRESTClient(core.PodObjectType)
-	podListerWatcher := listwatch.NewListWatchFromClient(podClient)
+	podClient, err := apiclient.NewRESTClient(core.PodObjectType)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
-	criClient := container.NewCriClient()
-	criClient.SetNamespace("kubelet")
+	err = container.NewCriClient().CreateContainer(core.Container{Name: "hello", Image: "docker.io/library/redis:alpine"})
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
 	return &kubelet{
 		name:             "Kubelet", // TODO: change to node name + Kubelet
 		podClient:        podClient,
-		podListerWatcher: podListerWatcher,
+		podListerWatcher: listwatch.NewListWatchFromClient(podClient),
 		podManager:       pod.NewPodManager(),
-		criClient:        criClient,
+		criClient:        container.NewCriClient(),
 	}
 }
 
