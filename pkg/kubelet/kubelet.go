@@ -20,18 +20,19 @@ type Kubelet interface {
 
 func New() Kubelet {
 
-	podClient, _ := apiclient.NewRESTClient(types.PodObjectType)
+	podClient, err := apiclient.NewRESTClient(types.PodObjectType)
 	podListerWatcher := listwatch.NewListWatchFromClient(podClient)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
-	criClient := container.NewCriClient()
-	criClient.SetNamespace("kubelet")
 
 	return &kubelet{
 		name:             "Kubelet", // TODO: change to node name + Kubelet
 		podClient:        podClient,
-		podListerWatcher: podListerWatcher,
+		podListerWatcher: listwatch.NewListWatchFromClient(podClient),
 		podManager:       pod.NewPodManager(),
-		criClient:        criClient,
+		criClient:        container.NewCriClient(),
 	}
 }
 
