@@ -89,29 +89,32 @@ func buildSnapshotNCOpt(cnt core.Container, img containerd.Image) containerd.New
 }
 
 func buildImage(ctx context.Context, clnt *containerd.Client, cnt core.Container) (containerd.Image, error) {
-	switch cnt.ImagePullPolicy {
-	case core.PullAlways:
-		return clnt.Pull(ctx, cnt.Image, containerd.WithPullUnpack)
-	case core.PullNever:
-		imgs, err := clnt.ListImages(ctx, cnt.Image)
-		if err != nil {
-			return nil, err
-		}
-		if len(imgs) == 0 {
-			return nil, fmt.Errorf("image %s not exists", cnt.Image)
-		}
-		return imgs[0], nil
-	case core.PullIfNotPresent:
-		imgs, err := clnt.ListImages(ctx, cnt.Image)
-		if err != nil {
-			return nil, err
-		}
-		if len(imgs) == 0 {
-			return clnt.Pull(ctx, cnt.Image)
-		}
-		return imgs[0], nil
-	}
-	return nil, nil
+	//switch cnt.ImagePullPolicy {
+	//case core.PullAlways:
+	//	return clnt.Pull(ctx, cnt.Image, containerd.WithPullUnpack)
+	//case core.PullNever:
+	//	imgs, err := clnt.ListImages(ctx, cnt.Image)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	if len(imgs) == 0 {
+	//		return nil, fmt.Errorf("image %s not exists", cnt.Image)
+	//	}
+	//	return imgs[0], nil
+	//default:
+	//	fallthrough
+	//case core.PullIfNotPresent:
+	//	imgs, err := clnt.ListImages(ctx, cnt.Image)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	if len(imgs) == 0 {
+	//		return clnt.Pull(ctx, cnt.Image)
+	//	}
+	//	return imgs[0], nil
+	//}
+	// FIXME the pull policy is ignored
+	return clnt.Pull(ctx, cnt.Image, containerd.WithPullUnpack)
 }
 
 func buildSpecNCOpt(cnt core.Container, img oci.Image) containerd.NewContainerOpts {
