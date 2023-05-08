@@ -23,12 +23,15 @@ func New() Kubelet {
 	podClient, _ := apiclient.NewRESTClient(types.PodObjectType)
 	podListerWatcher := listwatch.NewListWatchFromClient(podClient)
 
+	criClient := container.NewCriClient()
+	criClient.SetNamespace("kubelet")
+
 	return &kubelet{
 		name:             "Kubelet", // TODO: change to node name + Kubelet
 		podClient:        podClient,
 		podListerWatcher: podListerWatcher,
 		podManager:       pod.NewPodManager(),
-		criClient:        container.NewCriClient(),
+		criClient:        criClient,
 	}
 }
 
