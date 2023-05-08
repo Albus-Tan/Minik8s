@@ -42,7 +42,7 @@ func NewEtcdEventDecoder(body io.ReadCloser, ty types.ApiObjectType) *EtcdEventD
 // watch.Event step by step
 func (e *EtcdEventDecoder) convertEvent(buf []byte, ty types.ApiObjectType) (*Event, error) {
 
-	// log.Printf("[watch][ConvertEvent] buf: %v\n", string(buf))
+	log.Printf("[EtcdEventDecoder][ConvertEvent] buf: %v\n", string(buf))
 	event := &etcd.Event{}
 	err := json.Unmarshal(buf, event)
 	if err != nil {
@@ -52,27 +52,31 @@ func (e *EtcdEventDecoder) convertEvent(buf []byte, ty types.ApiObjectType) (*Ev
 
 	newEvent := &Event{}
 	newEvent.Object = core.CreateApiObject(ty)
-	err = newEvent.Object.JsonUnmarshal(event.Kv.Value)
-	if err != nil {
-		log.Printf("[EtcdEventDecoder][ConvertEvent] Event JsonUnmarshal failed\n")
-		return nil, err
-	}
 
 	switch event.Type {
 	case etcd.EventTypePut:
+
+		err = newEvent.Object.JsonUnmarshal(event.Kv.Value)
+		if err != nil {
+			log.Printf("[EtcdEventDecoder][ConvertEvent] Event JsonUnmarshal failed\n")
+			return nil, err
+		}
+
 		if event.Kv.CreateRevision == event.Kv.ModRevision {
 			newEvent.Type = Added
 		} else {
 			newEvent.Type = Modified
 		}
+
+		newEvent.Version = event.Kv.Version
+		newEvent.CreateRevision = event.Kv.CreateRevision
+
 	case etcd.EventTypeDelete:
 		newEvent.Type = Deleted
 	}
 
 	newEvent.Key = string(event.Kv.Key)
-	newEvent.CreateRevision = event.Kv.CreateRevision
 	newEvent.ModRevision = event.Kv.ModRevision
-	newEvent.Version = event.Kv.Version
 
 	return newEvent, nil
 }
