@@ -1,0 +1,121 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "annotations": {
+      "deployment.kubernetes.io/revision": "1",
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"name\":\"deploy-practice\",\"namespace\":\"default\"},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"deploy-practice\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"deploy-practice\"}},\"spec\":{\"containers\":[{\"image\":\"hejingkai/fileserver:latest\",\"name\":\"fileserver\",\"ports\":[{\"containerPort\":8080,\"name\":\"p1\"}],\"volumeMounts\":[{\"mountPath\":\"/usr/share/files\",\"name\":\"download\"}]},{\"image\":\"hejingkai/downloader:latest\",\"name\":\"downloader\",\"ports\":[{\"containerPort\":3000,\"name\":\"p2\"}],\"volumeMounts\":[{\"mountPath\":\"/data\",\"name\":\"download\"}]}],\"volumes\":[{\"emptyDir\":{},\"name\":\"download\"}]}}}}\n"
+    },
+    "creationTimestamp": "2023-05-08T13:46:18Z",
+    "generation": 1,
+    "name": "deploy-practice",
+    "namespace": "default"
+  },
+  "spec": {
+    "progressDeadlineSeconds": 600,
+    "replicas": 3,
+    "revisionHistoryLimit": 10,
+    "selector": {
+      "matchLabels": {
+        "app": "deploy-practice"
+      }
+    },
+    "strategy": {
+      "rollingUpdate": {
+        "maxSurge": "25%",
+        "maxUnavailable": "25%"
+      },
+      "type": "RollingUpdate"
+    },
+    "template": {
+      "metadata": {
+        "creationTimestamp": null,
+        "labels": {
+          "app": "deploy-practice"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "hejingkai/fileserver:latest",
+            "imagePullPolicy": "Always",
+            "name": "fileserver",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "p1",
+                "protocol": "TCP"
+              }
+            ],
+            "resources": {},
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File",
+            "volumeMounts": [
+              {
+                "mountPath": "/usr/share/files",
+                "name": "download"
+              }
+            ]
+          },
+          {
+            "image": "hejingkai/downloader:latest",
+            "imagePullPolicy": "Always",
+            "name": "downloader",
+            "ports": [
+              {
+                "containerPort": 3000,
+                "name": "p2",
+                "protocol": "TCP"
+              }
+            ],
+            "resources": {},
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File",
+            "volumeMounts": [
+              {
+                "mountPath": "/data",
+                "name": "download"
+              }
+            ]
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {},
+        "terminationGracePeriodSeconds": 30,
+        "volumes": [
+          {
+            "emptyDir": {},
+            "name": "download"
+          }
+        ]
+      }
+    }
+  },
+  "status": {
+    "availableReplicas": 3,
+    "conditions": [
+      {
+        "lastTransitionTime": "2023-05-08T13:46:55Z",
+        "lastUpdateTime": "2023-05-08T13:46:55Z",
+        "message": "Deployment has minimum availability.",
+        "reason": "MinimumReplicasAvailable",
+        "status": "True",
+        "type": "Available"
+      },
+      {
+        "lastTransitionTime": "2023-05-08T13:46:18Z",
+        "lastUpdateTime": "2023-05-08T13:46:55Z",
+        "message": "ReplicaSet \"deploy-practice-74d959f7db\" has successfully progressed.",
+        "reason": "NewReplicaSetAvailable",
+        "status": "True",
+        "type": "Progressing"
+      }
+    ],
+    "observedGeneration": 1,
+    "readyReplicas": 3,
+    "replicas": 3,
+    "updatedReplicas": 3
+  }
+}

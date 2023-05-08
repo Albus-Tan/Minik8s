@@ -22,7 +22,7 @@ type Pod struct {
 	Spec PodSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 
 	// Most recently observed status of the pod.
-	// This data may not be up to date.
+	// This data may not be up-to-date.
 	// Populated by the system.
 	// Read-only.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
@@ -108,7 +108,7 @@ type PodSpec struct {
 	// Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes.
 	// The resourceRequirements of an init container are taken into account during scheduling
 	// by finding the highest request/limit for each resource type, and then using the max of
-	// of that value or the sum of the normal containers. Limits are applied to init containers
+	// that value or the sum of the normal containers. Limits are applied to init containers
 	// in a similar fashion.
 	// Init containers cannot currently be added or removed.
 	// Cannot be updated.
@@ -168,7 +168,7 @@ type PodStatus struct {
 	// Pending: The pod has been accepted by the Kubernetes system, but one or more of the
 	// container images has not been created. This includes time before being scheduled as
 	// well as time spent downloading images over the network, which could take a while.
-	// Running: The pod has been bound to a node, and all of the containers have been created.
+	// Running: The pod has been bound to a node, and all the containers have been created.
 	// At least one container is still running, or is in the process of starting or restarting.
 	// Succeeded: All containers in the pod have terminated in success, and will not be restarted.
 	// Failed: All containers in the pod have terminated, and at least one container has
@@ -213,7 +213,7 @@ const (
 	// has not been started. This includes time before being bound to a node, as well as time spent
 	// pulling images onto the host.
 	PodPending PodPhase = "Pending"
-	// PodRunning means the pod has been bound to a node and all of the containers have been started.
+	// PodRunning means the pod has been bound to a node and all the containers have been started.
 	// At least one container is still running or is in the process of being restarted.
 	PodRunning PodPhase = "Running"
 	// PodSucceeded means that all containers in the pod have voluntarily terminated
