@@ -3,13 +3,13 @@ package apiclient
 import (
 	"errors"
 	"io"
-	"log"
 	"minik8s/config"
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	httpclient "minik8s/pkg/apiclient/http"
+	"minik8s/pkg/logger"
 	"net/http"
 	"time"
 )
@@ -56,14 +56,14 @@ func (c *RESTClient) Post(object core.IApiObject) (int, *api.PostResponse, error
 	resourceURL := c.URL()
 	content, err := object.JsonMarshal()
 	if err != nil {
-		log.Println("[RESTClient] http.Post JsonMarshal failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Post JsonMarshal failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 
 	resp, err := httpclient.PostBytes(resourceURL, content)
 	defer resp.Body.Close()
 	if err != nil {
-		log.Println("[RESTClient] http.Post failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Post failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 
@@ -76,7 +76,7 @@ func (c *RESTClient) Post(object core.IApiObject) (int, *api.PostResponse, error
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, postResp, nil
 	} else {
-		log.Println("[RESTClient] http.Post StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Post StatusCode not http.StatusOK", err)
 		return resp.StatusCode, postResp, errors.New("StatusCode not 200")
 	}
 }
@@ -86,13 +86,13 @@ func (c *RESTClient) Put(name string, object core.IApiObject) (int, *api.PutResp
 	resourceURL := c.URL() + name
 	content, err := object.JsonMarshal()
 	if err != nil {
-		log.Println("[RESTClient] http.Put JsonMarshal failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Put JsonMarshal failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 
 	resp, err := httpclient.PutBytes(resourceURL, content)
 	if err != nil {
-		log.Println("[RESTClient] http.Put failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Put failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 
@@ -105,7 +105,7 @@ func (c *RESTClient) Put(name string, object core.IApiObject) (int, *api.PutResp
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, putResp, nil
 	} else {
-		log.Println("[RESTClient] http.Put StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Put StatusCode not http.StatusOK", err)
 		return resp.StatusCode, putResp, errors.New("StatusCode not 200")
 	}
 }
@@ -117,19 +117,19 @@ func (c *RESTClient) Get(name string) (core.IApiObject, error) {
 
 	resp, err := http.Get(resourceURL)
 	if err != nil {
-		log.Println("[RESTClient] http.Get failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Get failed", err)
 		return nil, err
 	}
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("[RESTClient] http.Get response io.ReadAll(resp.Body) failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Get response io.ReadAll(resp.Body) failed", err)
 		return nil, err
 	}
 
 	err = object.JsonUnmarshal(content)
 	if err != nil {
-		log.Printf("[RESTClient] http.Get response json.Unmarshal failed, err %v\n", err)
+		logger.ApiClientLogger.Printf("[RESTClient] http.Get response json.Unmarshal failed, err %v\n", err)
 		return nil, err
 	}
 
@@ -142,19 +142,19 @@ func (c *RESTClient) GetStatus(name string) (core.IApiObjectStatus, error) {
 
 	resp, err := http.Get(resourceURL)
 	if err != nil {
-		log.Println("[RESTClient] http.GetStatus failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.GetStatus failed", err)
 		return nil, err
 	}
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("[RESTClient] http.GetStatus response io.ReadAll(resp.Body) failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.GetStatus response io.ReadAll(resp.Body) failed", err)
 		return nil, err
 	}
 
 	err = objectStatus.JsonUnmarshal(content)
 	if err != nil {
-		log.Printf("[RESTClient] http.GetStatus response json.Unmarshal failed, err %v\n", err)
+		logger.ApiClientLogger.Printf("[RESTClient] http.GetStatus response json.Unmarshal failed, err %v\n", err)
 		return nil, err
 	}
 
@@ -165,13 +165,13 @@ func (c *RESTClient) PutStatus(name string, object core.IApiObjectStatus) (int, 
 	resourceURL := c.URL() + name + api.StatusSuffix
 	content, err := object.JsonMarshal()
 	if err != nil {
-		log.Println("[RESTClient] http.PutStatus JsonMarshal failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.PutStatus JsonMarshal failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 
 	resp, err := httpclient.PutBytes(resourceURL, content)
 	if err != nil {
-		log.Println("[RESTClient] http.PutStatus failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.PutStatus failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 
@@ -184,7 +184,7 @@ func (c *RESTClient) PutStatus(name string, object core.IApiObjectStatus) (int, 
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, putResp, nil
 	} else {
-		log.Println("[RESTClient] http.PutStatus StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.PutStatus StatusCode not http.StatusOK", err)
 		return resp.StatusCode, putResp, errors.New("StatusCode not 200")
 	}
 }
@@ -194,13 +194,13 @@ func (c *RESTClient) GetAll() (objectList core.IApiObjectList, err error) {
 
 	resp, err := http.Get(resourceURL)
 	if err != nil {
-		log.Println("[RESTClient] http.GetAll failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.GetAll failed", err)
 		return nil, err
 	}
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("[RESTClient] http.GetAll response io.ReadAll(resp.Body) failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.GetAll response io.ReadAll(resp.Body) failed", err)
 		return nil, err
 	}
 
@@ -211,12 +211,12 @@ func (c *RESTClient) GetAll() (objectList core.IApiObjectList, err error) {
 
 	err = objectList.JsonUnmarshal(content)
 	if err != nil {
-		log.Printf("[RESTClient] http.Get response json.Unmarshal failed, err %v\n", err)
+		logger.ApiClientLogger.Printf("[RESTClient] http.Get response json.Unmarshal failed, err %v\n", err)
 		return nil, err
 	}
 
 	if err != nil {
-		log.Println("[RESTClient] http.GetAll response json.Unmarshal objects list failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.GetAll response json.Unmarshal objects list failed", err)
 		return nil, err
 	}
 
@@ -230,13 +230,13 @@ func (c *RESTClient) Delete(name string) (int, *api.DeleteResponse, error) {
 	cli := &http.Client{}
 	req, err := http.NewRequest(http.MethodDelete, resourceURL, nil)
 	if err != nil {
-		log.Println("[RESTClient] http.Delete NewRequest create failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Delete NewRequest create failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 
 	resp, err := cli.Do(req)
 	if err != nil {
-		log.Println("[RESTClient] http.Delete request send failed", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Delete request send failed", err)
 		return HttpStatusNotSend, nil, err
 	}
 	defer resp.Body.Close()
@@ -250,7 +250,7 @@ func (c *RESTClient) Delete(name string) (int, *api.DeleteResponse, error) {
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, delResp, nil
 	} else {
-		log.Println("[RESTClient] http.Delete StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Delete StatusCode not http.StatusOK", err)
 		return resp.StatusCode, delResp, errors.New("StatusCode not 200")
 	}
 }
@@ -260,7 +260,7 @@ func (c *RESTClient) WatchAll() (watch.Interface, error) {
 	resp, err := http.Get(resourceURL)
 
 	if err != nil {
-		log.Println("[RESTClient] WatchAll Failed: ", err)
+		logger.ApiClientLogger.Println("[RESTClient] WatchAll Failed: ", err)
 		// sleep some time before retry
 		time.Sleep(time.Second * time.Duration(ReconnectInterval))
 		return nil, err
@@ -278,13 +278,13 @@ func (c *RESTClient) Watch(name string) (watch.Interface, error) {
 	resp, err := http.Get(resourceURL)
 
 	if err != nil {
-		log.Printf("[RESTClient] Watch %v %v Failed: %v\n", c.resourceType, name, err)
+		logger.ApiClientLogger.Printf("[RESTClient] Watch %v %v Failed: %v\n", c.resourceType, name, err)
 		// sleep some time before retry
 		time.Sleep(time.Second * time.Duration(ReconnectInterval))
 		return nil, err
 	}
 
-	log.Printf("[RESTClient] Watch %v %v start\n", c.resourceType, name)
+	logger.ApiClientLogger.Printf("[RESTClient] Watch %v %v start\n", c.resourceType, name)
 
 	decoder := watch.NewEtcdEventDecoder(resp.Body, c.resourceType)
 	reporter := watch.NewDefaultReporter()

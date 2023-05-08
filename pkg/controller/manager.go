@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"log"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiclient"
@@ -58,16 +59,17 @@ func (m *manager) Run() {
 	log.Printf("manager start\n")
 
 	stopCh := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Stop controller manager and all related go routines
+	defer close(stopCh)
+	defer cancel()
 
 	// Run Informer
 	m.podInformer.Run(stopCh)
 	m.rsInformer.Run(stopCh)
 
 	// Run Controller
-	m.replicaSetController.Run()
+	m.replicaSetController.Run(ctx)
 
-	panic("implement me")
-
-	// Stop controller manager and all related go routines
-	// close(stopCh)
 }

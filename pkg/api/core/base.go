@@ -105,6 +105,8 @@ func GetApiObjectsURL(ty types.ApiObjectType) string {
 		return api.ServicesURL
 	case types.NodeObjectType:
 		return api.NodesURL
+	case types.ReplicasetObjectType:
+		return api.ReplicaSetsURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -118,6 +120,8 @@ func GetWatchApiObjectsURL(ty types.ApiObjectType) string {
 		return api.WatchServicesURL
 	case types.NodeObjectType:
 		return api.WatchNodesURL
+	case types.ReplicasetObjectType:
+		return api.WatchReplicaSetsURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}

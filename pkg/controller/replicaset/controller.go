@@ -2,14 +2,20 @@ package replicaset
 
 import (
 	"context"
-	"log"
+	"errors"
+	"fmt"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/generate"
+	"minik8s/pkg/api/meta"
+	"minik8s/pkg/api/types"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/controller/cache"
+	"minik8s/pkg/logger"
+	"time"
 )
 
 type ReplicaSetController interface {
-	Run()
+	Run(ctx context.Context)
 }
 
 func NewReplicaSetController(podInformer cache.Informer, podClient client.Interface, rsInformer cache.Informer, rsClient client.Interface) ReplicaSetController {
@@ -48,10 +54,17 @@ type replicaSetController struct {
 	queue       cache.WorkQueue
 }
 
-func (rsc *replicaSetController) Run() {
+func (rsc *replicaSetController) Run(ctx context.Context) {
 	//TODO implement me
-	log.SetPrefix("[ReplicaSetController] ")
-	log.Printf("start\n")
+
+	// logger.ReplicaSetControllerLogger.SetPrefix()
+	logger.ReplicaSetControllerLogger.Printf("[ReplicaSetController] start\n")
+
+	rsc.runWorker(ctx)
+
+	// wait for controller manager stop
+	<-ctx.Done()
+
 }
 
 func (rsc *replicaSetController) RSKeyFunc(rs *core.ReplicaSet) string {
@@ -61,12 +74,12 @@ func (rsc *replicaSetController) RSKeyFunc(rs *core.ReplicaSet) string {
 func (rsc *replicaSetController) enqueueRS(rs *core.ReplicaSet) {
 	key := rsc.RSKeyFunc(rs)
 	rsc.queue.Enqueue(key)
-	log.Printf("enqueueRS key %s\n", key)
+	logger.ReplicaSetControllerLogger.Printf("enqueueRS key %s\n", key)
 }
 
 func (rsc *replicaSetController) addRS(obj interface{}) {
 	rs := obj.(*core.ReplicaSet)
-	log.Printf("Adding %s %s/%s\n", rsc.Kind, rs.Namespace, rs.Name)
+	logger.ReplicaSetControllerLogger.Printf("Adding %s %s/%s\n", rsc.Kind, rs.Namespace, rs.Name)
 	rsc.enqueueRS(rs)
 }
 
@@ -85,7 +98,7 @@ func (rsc *replicaSetController) updateRS(old, cur interface{}) {
 	//}
 
 	if (oldRS.Spec.Replicas) != (curRS.Spec.Replicas) {
-		log.Printf("%v %v updated uid %v. Desired pod count change: %d->%d\n", rsc.Kind, curRS.Name, curRS.UID, oldRS.Spec.Replicas, curRS.Spec.Replicas)
+		logger.ReplicaSetControllerLogger.Printf("%v %v updated uid %v. Desired pod count change: %d->%d\n", rsc.Kind, curRS.Name, curRS.UID, oldRS.Spec.Replicas, curRS.Spec.Replicas)
 	}
 	rsc.enqueueRS(curRS)
 }
@@ -93,7 +106,7 @@ func (rsc *replicaSetController) updateRS(old, cur interface{}) {
 func (rsc *replicaSetController) deleteRS(obj interface{}) {
 	rs := obj.(*core.ReplicaSet)
 
-	log.Printf("Deleting %s, uid %s\n", rsc.Kind, rs.UID)
+	logger.ReplicaSetControllerLogger.Printf("Deleting %s, uid %s\n", rsc.Kind, rs.UID)
 
 	// Delete expectations for the ReplicaSet so if we create a new one with the same name it starts clean
 
@@ -113,7 +126,7 @@ func (rsc *replicaSetController) addPod(obj interface{}) {
 	//	if err != nil {
 	//		return
 	//	}
-	//	klog.V(4).Infof("Pod %s created: %#v.", pod.Name, pod)
+	//	klogger.ReplicaSetControllerLogger.V(4).Infof("Pod %s created: %#v.", pod.Name, pod)
 	//	rsc.expectations.CreationObserved(rsKey)
 	//	rsc.queue.Add(rsKey)
 	//	return
@@ -127,7 +140,7 @@ func (rsc *replicaSetController) addPod(obj interface{}) {
 	//if len(rss) == 0 {
 	//	return
 	//}
-	//klog.V(4).Infof("Orphan Pod %s created: %#v.", pod.Name, pod)
+	//klogger.ReplicaSetControllerLogger.V(4).Infof("Orphan Pod %s created: %#v.", pod.Name, pod)
 	//for _, rs := range rss {
 	//	rsc.enqueueRS(rs)
 	//}
@@ -176,7 +189,7 @@ func (rsc *replicaSetController) updatePod(old, cur interface{}) {
 	//	if rs == nil {
 	//		return
 	//	}
-	//	klog.V(4).Infof("Pod %s updated, objectMeta %+v -> %+v.", curPod.Name, oldPod.ObjectMeta, curPod.ObjectMeta)
+	//	klogger.ReplicaSetControllerLogger.V(4).Infof("Pod %s updated, objectMeta %+v -> %+v.", curPod.Name, oldPod.ObjectMeta, curPod.ObjectMeta)
 	//	rsc.enqueueRS(rs)
 	//	// TODO: MinReadySeconds in the Pod will generate an Available condition to be added in
 	//	// the Pod status which in turn will trigger a requeue of the owning replica set thus
@@ -186,7 +199,7 @@ func (rsc *replicaSetController) updatePod(old, cur interface{}) {
 	//	// Note that this still suffers from #29229, we are just moving the problem one level
 	//	// "closer" to kubelet (from the deployment to the replica set controller).
 	//	if !podutil.IsPodReady(oldPod) && podutil.IsPodReady(curPod) && rs.Spec.MinReadySeconds > 0 {
-	//		klog.V(2).Infof("%v %q will be enqueued after %ds for availability check", rsc.Kind, rs.Name, rs.Spec.MinReadySeconds)
+	//		klogger.ReplicaSetControllerLogger.V(2).Infof("%v %q will be enqueued after %ds for availability check", rsc.Kind, rs.Name, rs.Spec.MinReadySeconds)
 	//		// Add a second to avoid milliseconds skew in AddAfter.
 	//		// See https://github.com/kubernetes/kubernetes/issues/39785#issuecomment-279959133 for more info.
 	//		rsc.enqueueRSAfter(rs, (time.Duration(rs.Spec.MinReadySeconds)*time.Second)+time.Second)
@@ -201,7 +214,7 @@ func (rsc *replicaSetController) updatePod(old, cur interface{}) {
 	//	if len(rss) == 0 {
 	//		return
 	//	}
-	//	klog.V(4).Infof("Orphan Pod %s updated, objectMeta %+v -> %+v.", curPod.Name, oldPod.ObjectMeta, curPod.ObjectMeta)
+	//	klogger.ReplicaSetControllerLogger.V(4).Infof("Orphan Pod %s updated, objectMeta %+v -> %+v.", curPod.Name, oldPod.ObjectMeta, curPod.ObjectMeta)
 	//	for _, rs := range rss {
 	//		rsc.enqueueRS(rs)
 	//	}
@@ -244,19 +257,38 @@ func (rsc *replicaSetController) deletePod(obj interface{}) {
 	//	utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", rs, err))
 	//	return
 	//}
-	//klog.V(4).Infof("Pod %s/%s deleted through %v, timestamp %+v: %#v.", pod.Namespace, pod.Name, utilruntime.GetCaller(), pod.DeletionTimestamp, pod)
+	//klogger.ReplicaSetControllerLogger.V(4).Infof("Pod %s/%s deleted through %v, timestamp %+v: %#v.", pod.Namespace, pod.Name, utilruntime.GetCaller(), pod.DeletionTimestamp, pod)
 	//rsc.expectations.DeletionObserved(rsKey, controller.PodKey(pod))
 	//rsc.queue.Add(rsKey)
 }
 
+func (rsc *replicaSetController) runWorker(ctx context.Context) {
+	go rsc.worker(ctx)
+}
+
+const defaultWorkerSleepInterval = time.Duration(5) * time.Second
+
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
 // It enforces that the syncHandler is never invoked concurrently with the same key.
 func (rsc *replicaSetController) worker(ctx context.Context) {
-	//for rsc.processNextWorkItem(ctx) {
-	//}
+
+	// go wait.UntilWithContext(ctx, rsc.worker, time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			logger.ReplicaSetControllerLogger.Printf("[worker] ctx.Done() received, worker of ReplicaSetController exit\n")
+			return
+		default:
+			rsc.processNextWorkItem(ctx)
+			time.Sleep(defaultWorkerSleepInterval)
+		}
+	}
+
 }
 
 func (rsc *replicaSetController) processNextWorkItem(ctx context.Context) bool {
+	// TODO
+
 	//key, quit := rsc.queue.Get()
 	//if quit {
 	//	return false
@@ -274,4 +306,131 @@ func (rsc *replicaSetController) processNextWorkItem(ctx context.Context) bool {
 	//
 	//return true
 	return true
+}
+
+// syncReplicaSet will sync the ReplicaSet with the given key if it has had its expectations fulfilled,
+// meaning it did not expect to see any more of its pods created or deleted. This function is not meant to be
+// invoked concurrently with the same key.
+// param key is the uid of object
+func (rsc *replicaSetController) syncReplicaSet(ctx context.Context, key string) error {
+
+	// Get the ReplicaSet
+	rsItem, exist := rsc.RsInformer.Get(key)
+	if !exist {
+		return errors.New(fmt.Sprintf("[syncReplicaSet] ReplicaSet key: %v is not exist in RsInformer", key))
+	}
+
+	rs, ok := rsItem.(*core.ReplicaSet)
+	if !ok {
+		return errors.New(fmt.Sprintf("[syncReplicaSet] key: %v is not ReplicaSet type in RsInformer", key))
+	}
+
+	allPods := rsc.PodInformer.List()
+
+	var actualReplicaNum int32 = 0
+	rsUID := rs.GetUID()
+
+	podsOwned := make([]core.Pod, 0)
+	// calculate actual Replica pod number
+	for _, podItem := range allPods {
+
+		pod, ok := podItem.(*core.Pod)
+		if !ok {
+			return errors.New(fmt.Sprintf("[syncReplicaSet] Not Pod type in PodInformer"))
+		}
+
+		// check if pod have owner rs
+		if isOwner, owner := meta.CheckOwner(rsUID, pod.OwnerReferences); isOwner {
+
+			// rs is owner of this pod
+			if meta.CheckOwnerKind(types.ReplicasetObjectType, owner) {
+				// increase actual replica num of rs
+				actualReplicaNum++
+				// append pod info to podsOwned
+				podsOwned = append(podsOwned, *pod)
+			} else {
+				return errors.New(fmt.Sprintf("[syncReplicaSet] key: %v is not ReplicaSet type in pod OwnerReferences", key))
+			}
+
+		} else {
+			// rs is not owner of this pod
+			// TODO: match label selector
+		}
+	}
+
+	// update ReplicaSet status
+	rs.Status.Replicas = actualReplicaNum
+
+	// check if status and spec match
+	if rs.Status.Replicas != rs.Spec.Replicas {
+		if rs.Status.Replicas < rs.Spec.Replicas {
+			rsc.increaseReplica(rs)
+		} else {
+			rsc.decreaseReplica(rs, podsOwned)
+		}
+	}
+
+	return nil
+}
+
+func (rsc *replicaSetController) increaseReplica(rs *core.ReplicaSet) {
+	numToIncrease := rs.Spec.Replicas - rs.Status.Replicas
+
+	// Generate rs ownerReference
+	ownerReference := rs.GenerateOwnerReference()
+
+	var idx int32
+	for idx = 0; idx < numToIncrease; idx++ {
+
+		// Generate new pod from rs pod template
+		newPod := generate.PodFromReplicaSet(rs)
+		newPod.AppendOwnerReference(ownerReference)
+
+		// Ask ApiServer to create new pods
+		_, postResponse, err := rsc.PodClient.Post(newPod)
+		if err != nil {
+			logger.ReplicaSetControllerLogger.Printf("[increaseReplica] Post failed when ask ApiServer to create new pods, %v\n", err)
+			return
+		}
+
+		// Wait for create of pod finish
+		logger.ReplicaSetControllerLogger.Printf("[increaseReplica] New Pod name %s successfully created, uid %v\n", newPod.Name, postResponse.UID)
+
+	}
+
+	rs.Status.Replicas = rs.Spec.Replicas
+
+	// update rs status
+	_, _, err := rsc.RsClient.Put(rs.UID, rs)
+	if err != nil {
+		logger.ReplicaSetControllerLogger.Printf("[increaseReplica] Put failed when ask ApiServer to update rs, %v\n", err)
+		return
+	}
+
+}
+
+func (rsc *replicaSetController) decreaseReplica(rs *core.ReplicaSet, podsOwned []core.Pod) {
+	numToDecrease := rs.Status.Replicas - rs.Spec.Replicas
+
+	// ask ApiServer to delete pods
+	var idx int32
+	for idx = 0; idx < numToDecrease; idx++ {
+		podToDelete := podsOwned[idx]
+
+		// delete pod
+		_, _, err := rsc.PodClient.Delete(podToDelete.UID)
+		if err != nil {
+			logger.ReplicaSetControllerLogger.Printf("[decreaseReplica] Delete failed when ask ApiServer to delete new pods, %v\n", err)
+			return
+		}
+	}
+
+	rs.Status.Replicas = rs.Spec.Replicas
+
+	// update rs status
+	_, _, err := rsc.RsClient.Put(rs.UID, rs)
+	if err != nil {
+		logger.ReplicaSetControllerLogger.Printf("[decreaseReplica] Put failed when ask ApiServer to update rs, %v\n", err)
+		return
+	}
 }

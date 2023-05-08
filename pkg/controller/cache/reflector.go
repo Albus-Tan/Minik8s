@@ -2,11 +2,11 @@ package cache
 
 import (
 	"errors"
-	"log"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	"minik8s/pkg/apiclient/listwatch"
+	"minik8s/pkg/logger"
 	"time"
 )
 
@@ -60,12 +60,12 @@ var (
 // objects and subsequent deltas.
 // Run will exit when stopCh is closed.
 func (r *Reflector) Run(stopCh <-chan struct{}, syncChan chan bool) error {
-	log.Printf("[Reflector] Starting reflector %s (%s) from %s\n", r.expectedType, r.resyncPeriod, r.name)
+	logger.ControllerManagerLogger.Printf("[Reflector] Starting reflector %s (%s) from %s\n", r.expectedType, r.resyncPeriod, r.name)
 	if err := r.ListAndWatch(stopCh, syncChan); err != nil {
-		log.Printf("[Reflector] ListAndWatch error %v, %s (%s) from %s\n", err, r.expectedType, r.resyncPeriod, r.name)
+		logger.ControllerManagerLogger.Printf("[Reflector] ListAndWatch error %v, %s (%s) from %s\n", err, r.expectedType, r.resyncPeriod, r.name)
 		return err
 	}
-	log.Printf("[Reflector] Stopping reflector %s (%s) from %s\n", r.expectedType, r.resyncPeriod, r.name)
+	logger.ControllerManagerLogger.Printf("[Reflector] Stopping reflector %s (%s) from %s\n", r.expectedType, r.resyncPeriod, r.name)
 	return nil
 }
 
@@ -73,7 +73,7 @@ func (r *Reflector) Run(stopCh <-chan struct{}, syncChan chan bool) error {
 // and then use the resource version to watch.
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}, syncChan chan bool) error {
-	log.Printf("[Reflector] Listing and watching %v from %s\n", r.expectedType, r.name)
+	logger.ControllerManagerLogger.Printf("[Reflector] Listing and watching %v from %s\n", r.expectedType, r.name)
 
 	var err error
 	var w watch.Interface
@@ -144,15 +144,15 @@ loop:
 	for {
 		select {
 		case <-stopCh:
-			log.Printf("[Reflector] watchHandler stop received from stopCh\n")
-			log.Printf("[Reflector] %s: Watch close - %v total %v items received\n", r.name, r.expectedType, eventCount)
+			logger.ControllerManagerLogger.Printf("[Reflector] watchHandler stop received from stopCh\n")
+			logger.ControllerManagerLogger.Printf("[Reflector] %s: Watch close - %v total %v items received\n", r.name, r.expectedType, eventCount)
 			return errorStopRequested
 		case event, ok := <-w.ResultChan():
 			if !ok {
 				break loop
 			}
-			log.Printf("[Reflector] watchHandler event %v\n", event)
-			log.Printf("[Reflector] watchHandler event object %v\n", event.Object)
+			logger.ControllerManagerLogger.Printf("[Reflector] watchHandler event %v\n", event)
+			logger.ControllerManagerLogger.Printf("[Reflector] watchHandler event object %v\n", event.Object)
 			eventCount += 1
 
 			switch event.Type {
@@ -163,15 +163,15 @@ loop:
 			case watch.Bookmark:
 				panic("[Reflector] watchHandler Event Type watch.Bookmark received")
 			case watch.Error:
-				log.Printf("[Reflector] watchHandler watch.Error event object received %v\n", event.Object)
-				log.Printf("[Reflector] %s: Watch close - %v total %v items received\n", r.name, r.expectedType, eventCount)
+				logger.ControllerManagerLogger.Printf("[Reflector] watchHandler watch.Error event object received %v\n", event.Object)
+				logger.ControllerManagerLogger.Printf("[Reflector] %s: Watch close - %v total %v items received\n", r.name, r.expectedType, eventCount)
 				return event.Object.(*core.ErrorApiObject).GetError()
 			default:
 				panic("[Reflector] watchHandler Unknown Event Type received")
 			}
 		}
 	}
-	log.Printf("[Reflector] %s: Watch close - %v total %v items received\n", r.name, r.expectedType, eventCount)
+	logger.ControllerManagerLogger.Printf("[Reflector] %s: Watch close - %v total %v items received\n", r.name, r.expectedType, eventCount)
 	return nil
 }
 

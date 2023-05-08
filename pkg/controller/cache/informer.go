@@ -1,10 +1,10 @@
 package cache
 
 import (
-	"log"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	"minik8s/pkg/apiclient/listwatch"
+	"minik8s/pkg/logger"
 	"time"
 )
 
@@ -98,7 +98,7 @@ func (i *informer) run(stopCh <-chan struct{}) {
 		// Run reflector to start list and watch
 		err := i.reflector.Run(stopCh, syncChan)
 		if err != nil {
-			log.Printf("[Informer] reflector run error: %v\n", err)
+			logger.ControllerManagerLogger.Printf("[Informer] reflector run error: %v\n", err)
 			return
 		}
 	}()
@@ -163,8 +163,8 @@ func (i *informer) run(stopCh <-chan struct{}) {
 func (i *informer) Run(stopCh <-chan struct{}) {
 
 	go func() {
-		log.Printf("[%vInformer] %v informer start\n", i.objType, i.objType)
-		defer log.Printf("[%vInformer] %v informer exit\n", i.objType, i.objType)
+		logger.ControllerManagerLogger.Printf("[%vInformer] %v informer start\n", i.objType, i.objType)
+		defer logger.ControllerManagerLogger.Printf("[%vInformer] %v informer exit\n", i.objType, i.objType)
 		i.run(stopCh)
 	}()
 	return
