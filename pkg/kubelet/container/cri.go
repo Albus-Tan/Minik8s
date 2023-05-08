@@ -189,7 +189,7 @@ func buildMountSOpt(cnt core.Container) oci.SpecOpts {
 				Destination: m.MountPath,
 				Type:        "bind",
 				Source:      m.Name,
-				Options:     []string{"bind"}, //TODO Maybe it's not right, but currently it works
+				Options:     []string{"bind"}, //in linux, mount bind can mount a folder to another folder
 			})
 	}
 	return oci.WithMounts(ms)
