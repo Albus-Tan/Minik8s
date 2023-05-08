@@ -2,7 +2,6 @@ package container
 
 import (
 	"context"
-	"fmt"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/namespaces"
@@ -20,7 +19,10 @@ type CriClient interface {
 }
 
 func NewCriClient() CriClient {
-	return &criClient{}
+	return &criClient{
+		address:   "/run/containerd/containerd.sock",
+		namespace: "kubelet",
+	}
 }
 
 type criClient struct {
