@@ -30,6 +30,20 @@ type Pod struct {
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (p *Pod) AppendOwnerReference(reference meta.OwnerReference) {
+	p.OwnerReferences = append(p.OwnerReferences, reference)
+}
+
+func (p *Pod) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: p.APIVersion,
+		Kind:       p.Kind,
+		Name:       p.Name,
+		UID:        p.UID,
+		Controller: false,
+	}
+}
+
 func (p *Pod) CreateFromEtcdString(str string) error {
 	return p.JsonUnmarshal([]byte(str))
 }

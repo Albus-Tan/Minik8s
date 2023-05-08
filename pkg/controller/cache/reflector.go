@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	"minik8s/pkg/apiclient/listwatch"
 	"time"
@@ -14,7 +15,7 @@ type Reflector struct {
 	// name identifies this reflector. By default it will be a file:line if possible.
 	name string
 	// expectedType of object of the type we expect to place in the store.
-	expectedType core.ApiObjectType
+	expectedType types.ApiObjectType
 	// The destination to sync up with the watch source
 	store ThreadSafeStore
 	// listerWatcher is used to perform lists and watches.
@@ -38,7 +39,7 @@ type Reflector struct {
 }
 
 // NewReflector creates a new Reflector
-func NewReflector(lw listwatch.ListerWatcher, ty core.ApiObjectType, resyncPeriod time.Duration, s ThreadSafeStore, q WorkQueue) *Reflector {
+func NewReflector(lw listwatch.ListerWatcher, ty types.ApiObjectType, resyncPeriod time.Duration, s ThreadSafeStore, q WorkQueue) *Reflector {
 	return &Reflector{
 		name:           string(ty) + " Reflector",
 		resyncPeriod:   resyncPeriod,
@@ -177,6 +178,7 @@ loop:
 // getObjectKey get the key of object for storing
 func (r *Reflector) getObjectKey(obj core.IApiObject) string {
 	name := obj.GetUID()
-	prefix := core.GetApiObjectsURL(r.expectedType)
-	return prefix + name
+	return name
+	// prefix := core.GetApiObjectsURL(r.expectedType)
+	// return prefix + name
 }

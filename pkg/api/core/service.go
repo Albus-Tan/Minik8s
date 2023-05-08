@@ -30,6 +30,20 @@ type Service struct {
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (s *Service) AppendOwnerReference(reference meta.OwnerReference) {
+	s.OwnerReferences = append(s.OwnerReferences, reference)
+}
+
+func (s *Service) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: s.APIVersion,
+		Kind:       s.Kind,
+		Name:       s.Name,
+		UID:        s.UID,
+		Controller: false,
+	}
+}
+
 func (s *Service) CreateFromEtcdString(str string) error {
 	return s.JsonUnmarshal([]byte(str))
 }

@@ -2,6 +2,12 @@ package meta
 
 import "minik8s/pkg/api/types"
 
+const DefaultAPIVersion = "v1"
+
+// UIDNotGenerated fill UID field in ObjectMeta when
+// uid of api object is not yet allocated
+const UIDNotGenerated = ""
+
 // TypeMeta describes an individual object in an API response or request
 // with strings representing the type of the object and its API schema version.
 // Structures that are versioned or persisted should inline TypeMeta.
@@ -22,6 +28,14 @@ type TypeMeta struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty" protobuf:"bytes,2,opt,name=apiVersion"`
+}
+
+// CreateTypeMeta create TypeMeta field of according ApiObjectType
+func CreateTypeMeta(ty types.ApiObjectType) TypeMeta {
+	return TypeMeta{
+		Kind:       string(ty),
+		APIVersion: DefaultAPIVersion,
+	}
 }
 
 // ObjectMeta is metadata that all persisted resources must have, which includes all objects
@@ -110,7 +124,24 @@ type OwnerReference struct {
 	UID types.UID `json:"uid" protobuf:"bytes,4,opt,name=uid,casttype=k8s.io/apimachinery/pkg/types.UID"`
 	// If true, this reference points to the managing controller.
 	// +optional
-	Controller *bool `json:"controller,omitempty" protobuf:"varint,6,opt,name=controller"`
+	Controller bool `json:"controller,omitempty" protobuf:"varint,6,opt,name=controller"`
+}
+
+// CheckOwner checks whether object which has uid owns another object who has ownerReferences
+// field in []OwnerReference of its ObjectMeta
+// Check only UID field for matching
+func CheckOwner(uid types.UID, ownerReferences []OwnerReference) (isOwner bool, owner OwnerReference) {
+	for _, o := range ownerReferences {
+		if o.UID == uid {
+			return true, o
+		}
+	}
+	return false, OwnerReference{}
+}
+
+// CheckOwnerKind checks whether OwnerReference has param Kind
+func CheckOwnerKind(ty types.ApiObjectType, owner OwnerReference) bool {
+	return string(ty) == owner.Kind
 }
 
 // LabelSelector A label selector is a label query over a set of resources. The result of matchLabels and

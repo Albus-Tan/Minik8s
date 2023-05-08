@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiserver/etcd"
 )
 
@@ -25,10 +26,10 @@ type Decoder interface {
 type EtcdEventDecoder struct {
 	respBody   io.ReadCloser
 	source     *bufio.Reader
-	objectType core.ApiObjectType
+	objectType types.ApiObjectType
 }
 
-func NewEtcdEventDecoder(body io.ReadCloser, ty core.ApiObjectType) *EtcdEventDecoder {
+func NewEtcdEventDecoder(body io.ReadCloser, ty types.ApiObjectType) *EtcdEventDecoder {
 	d := &EtcdEventDecoder{
 		respBody:   body,
 		source:     bufio.NewReader(body),
@@ -39,7 +40,7 @@ func NewEtcdEventDecoder(body io.ReadCloser, ty core.ApiObjectType) *EtcdEventDe
 
 // ConvertEvent convert event buf client received in watch first to etcd.Event, and then to
 // watch.Event step by step
-func (e *EtcdEventDecoder) convertEvent(buf []byte, ty core.ApiObjectType) (*Event, error) {
+func (e *EtcdEventDecoder) convertEvent(buf []byte, ty types.ApiObjectType) (*Event, error) {
 
 	// log.Printf("[watch][ConvertEvent] buf: %v\n", string(buf))
 	event := &etcd.Event{}

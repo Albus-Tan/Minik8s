@@ -2,7 +2,7 @@ package controller
 
 import (
 	"log"
-	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/apiclient/listwatch"
@@ -17,8 +17,8 @@ type Manager interface {
 func NewControllerManager() Manager {
 
 	// Client and Informer can be reused for same resource type
-	podClient, podInformer := NewDefaultClientSet(core.PodObjectType)
-	rsClient, rsInformer := NewDefaultClientSet(core.ReplicasetObjectType)
+	podClient, podInformer := NewDefaultClientSet(types.PodObjectType)
+	rsClient, rsInformer := NewDefaultClientSet(types.ReplicasetObjectType)
 
 	return &manager{
 		// Client
@@ -45,7 +45,7 @@ type manager struct {
 	replicaSetController replicaset.ReplicaSetController
 }
 
-func NewDefaultClientSet(objType core.ApiObjectType) (client.Interface, cache.Informer) {
+func NewDefaultClientSet(objType types.ApiObjectType) (client.Interface, cache.Informer) {
 	restClient, _ := apiclient.NewRESTClient(objType)
 	lw := listwatch.NewListWatchFromClient(restClient)
 	informer := cache.NewDefaultInformer(lw, objType)

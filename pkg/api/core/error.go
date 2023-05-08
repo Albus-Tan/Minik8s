@@ -1,11 +1,22 @@
 package core
 
-import "minik8s/pkg/api/types"
+import (
+	"minik8s/pkg/api/meta"
+	"minik8s/pkg/api/types"
+)
 
 // ErrorApiObject ApiObject for error reporting
 type ErrorApiObject struct {
 	err error
 	msg string
+}
+
+func (e *ErrorApiObject) AppendOwnerReference(_ meta.OwnerReference) {
+	panic("ErrorApiObject: this method should not be called!")
+}
+
+func (e *ErrorApiObject) GenerateOwnerReference() meta.OwnerReference {
+	panic("ErrorApiObject: this method should not be called!")
 }
 
 func (e *ErrorApiObject) GetError() error {

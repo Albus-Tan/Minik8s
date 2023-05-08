@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
@@ -19,7 +20,7 @@ type Kubelet interface {
 
 func New() Kubelet {
 
-	podClient, _ := apiclient.NewRESTClient(core.PodObjectType)
+	podClient, _ := apiclient.NewRESTClient(types.PodObjectType)
 	podListerWatcher := listwatch.NewListWatchFromClient(podClient)
 
 	return &kubelet{
@@ -91,7 +92,7 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("[handleWatchPods] %s: ctx.Done(), Watch close - %v total %v items received\n", k.name, core.PodObjectType, eventCount)
+			log.Printf("[handleWatchPods] %s: ctx.Done(), Watch close - %v total %v items received\n", k.name, types.PodObjectType, eventCount)
 			return errorStopRequested
 		case event, ok := <-w.ResultChan():
 			if !ok {
@@ -117,14 +118,14 @@ loop:
 				panic("[handleWatchPods] Event Type watch.Bookmark received")
 			case watch.Error:
 				log.Printf("[handleWatchPods] watch.Error event object received %v\n", event.Object)
-				log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, core.PodObjectType, eventCount)
+				log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, types.PodObjectType, eventCount)
 				return event.Object.(*core.ErrorApiObject).GetError()
 			default:
 				panic("[handleWatchPods] Unknown Event Type received")
 			}
 		}
 	}
-	log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, core.PodObjectType, eventCount)
+	log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, types.PodObjectType, eventCount)
 	return nil
 }
 

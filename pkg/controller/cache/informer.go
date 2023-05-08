@@ -2,7 +2,7 @@ package cache
 
 import (
 	"log"
-	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	"minik8s/pkg/apiclient/listwatch"
 	"time"
@@ -23,7 +23,7 @@ type Informer interface {
 }
 
 type informer struct {
-	objType   core.ApiObjectType
+	objType   types.ApiObjectType
 	reflector *Reflector
 	handlers  []ResourceEventHandler
 
@@ -52,7 +52,7 @@ const defaultResyncPeriod = 30 * time.Second
 //     long as possible (until the upstream source closes the watch or times out,
 //     or you stop the controller).
 //   - h is the object you want notifications sent to.
-func NewInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType, resyncPeriod time.Duration, h ResourceEventHandler) Informer {
+func NewInformer(lw listwatch.ListerWatcher, objType types.ApiObjectType, resyncPeriod time.Duration, h ResourceEventHandler) Informer {
 	s := NewThreadSafeStore()
 	q := NewWorkQueue()
 	return &informer{
@@ -64,7 +64,7 @@ func NewInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType, resyncP
 	}
 }
 
-func NewDefaultInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType) Informer {
+func NewDefaultInformer(lw listwatch.ListerWatcher, objType types.ApiObjectType) Informer {
 	s := NewThreadSafeStore()
 	q := NewWorkQueue()
 	return &informer{

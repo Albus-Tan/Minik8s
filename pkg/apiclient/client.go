@@ -7,6 +7,7 @@ import (
 	"minik8s/config"
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	httpclient "minik8s/pkg/apiclient/http"
 	"net/http"
@@ -20,13 +21,13 @@ const ReconnectInterval = 5 // watch reconnect seconds
 type RESTClient struct {
 	apiServerURL string // url of apiServer
 	resourceURL  string // url of resource in pkg api
-	resourceType core.ApiObjectType
+	resourceType types.ApiObjectType
 }
 
 // NewRESTClient creates a new RESTClient. This client performs generic REST functions
 // such as Get, Put, Post, and Delete on specified paths.
 // Different type of resource need to use different RESTClient
-func NewRESTClient(ty core.ApiObjectType) (*RESTClient, error) {
+func NewRESTClient(ty types.ApiObjectType) (*RESTClient, error) {
 	return &RESTClient{
 		resourceType: ty,
 		resourceURL:  core.GetApiObjectsURL(ty),
@@ -223,30 +224,35 @@ func (c *RESTClient) GetAll() (objectList core.IApiObjectList, err error) {
 }
 
 // Delete begins a DELETE request.
-func (c *RESTClient) Delete(name string) (string, error) {
+func (c *RESTClient) Delete(name string) (int, *api.DeleteResponse, error) {
 	resourceURL := c.URL() + name
 
 	cli := &http.Client{}
 	req, err := http.NewRequest(http.MethodDelete, resourceURL, nil)
 	if err != nil {
 		log.Println("[RESTClient] http.Delete NewRequest create failed", err)
-		return "", err
+		return HttpStatusNotSend, nil, err
 	}
 
 	resp, err := cli.Do(req)
 	if err != nil {
 		log.Println("[RESTClient] http.Delete request send failed", err)
-		return "", err
+		return HttpStatusNotSend, nil, err
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	delResp := &api.DeleteResponse{}
+	err = delResp.FillResponse(resp)
 	if err != nil {
-		log.Println("[RESTClient] http.Delete request read response body failed", err)
-		return "", err
+		return resp.StatusCode, nil, err
 	}
 
-	return string(body), nil
+	if resp.StatusCode == http.StatusOK {
+		return resp.StatusCode, delResp, nil
+	} else {
+		log.Println("[RESTClient] http.Delete StatusCode not http.StatusOK", err)
+		return resp.StatusCode, delResp, errors.New("StatusCode not 200")
+	}
 }
 
 func (c *RESTClient) WatchAll() (watch.Interface, error) {

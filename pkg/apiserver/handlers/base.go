@@ -7,12 +7,13 @@ import (
 	"io"
 	"log"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiserver/etcd"
 	"minik8s/utils"
 	"net/http"
 )
 
-func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
+func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 
 	// read request body
 	buf, err := io.ReadAll(c.Request.Body)
@@ -57,7 +58,7 @@ func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handlePutObject(c *gin.Context, ty core.ApiObjectType) {
+func handlePutObject(c *gin.Context, ty types.ApiObjectType) {
 	// check if {ApiObject} exist
 	has, versionHas, err := etcd.HasWithVersion(c.Request.URL.Path)
 	if err != nil {
@@ -111,7 +112,7 @@ func handlePutObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleDeleteObject(c *gin.Context, ty core.ApiObjectType) {
+func handleDeleteObject(c *gin.Context, ty types.ApiObjectType) {
 	// check if {ApiObject} exist
 	has, err := etcd.Has(c.Request.URL.Path)
 	if err != nil {
@@ -132,7 +133,7 @@ func handleDeleteObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleGetObject(c *gin.Context, ty core.ApiObjectType) {
+func handleGetObject(c *gin.Context, ty types.ApiObjectType) {
 	objectStr, err := etcd.Get(c.Request.URL.Path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
@@ -149,7 +150,7 @@ func handleGetObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
+func handleGetObjects(c *gin.Context, ty types.ApiObjectType) {
 	objects, err := etcd.GetAllWithPrefix(c.Request.URL.Path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
@@ -165,7 +166,7 @@ func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleWatchObjectAndStatus(c *gin.Context, ty types.ApiObjectType, resourceURL string) {
 	// check if {ApiObject} exist
 	has, err := etcd.Has(resourceURL)
 	if err != nil {
@@ -241,7 +242,7 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 	}
 }
 
-func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleWatchObjectsAndStatus(c *gin.Context, ty types.ApiObjectType, resourceURL string) {
 	// register watch
 	log.Printf("[apiserver][HandleWatch%vs] Start watching resourceURL %v\n", ty, resourceURL)
 	cancel, ch := etcd.WatchAllWithPrefix(resourceURL)
@@ -284,7 +285,7 @@ func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resource
 	}
 }
 
-func handleGetObjectStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleGetObjectStatus(c *gin.Context, ty types.ApiObjectType, resourceURL string) {
 	objectJson, err := etcd.Get(resourceURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
@@ -302,7 +303,7 @@ func handleGetObjectStatus(c *gin.Context, ty core.ApiObjectType, resourceURL st
 	}
 }
 
-func handlePutObjectStatus(c *gin.Context, ty core.ApiObjectType, etcdURL string) {
+func handlePutObjectStatus(c *gin.Context, ty types.ApiObjectType, etcdURL string) {
 
 	has, versionHas, err := etcd.HasWithVersion(etcdURL)
 	if err != nil {

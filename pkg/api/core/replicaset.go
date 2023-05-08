@@ -32,6 +32,20 @@ type ReplicaSet struct {
 	Status ReplicaSetStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (r *ReplicaSet) AppendOwnerReference(reference meta.OwnerReference) {
+	r.OwnerReferences = append(r.OwnerReferences, reference)
+}
+
+func (r *ReplicaSet) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: r.APIVersion,
+		Kind:       r.Kind,
+		Name:       r.Name,
+		UID:        r.UID,
+		Controller: false,
+	}
+}
+
 func (r *ReplicaSet) SetUID(uid types.UID) {
 	r.ObjectMeta.UID = uid
 }

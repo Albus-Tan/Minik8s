@@ -3,18 +3,8 @@ package core
 import (
 	"fmt"
 	"minik8s/pkg/api"
+	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
-)
-
-type ApiObjectType string
-
-// These are the valid ApiObjectType.
-const (
-	ErrorObjectType      ApiObjectType = "Error"
-	PodObjectType        ApiObjectType = "Pod"
-	ServiceObjectType    ApiObjectType = "Service"
-	ReplicasetObjectType ApiObjectType = "ReplicaSet"
-	NodeObjectType       ApiObjectType = "Node"
 )
 
 type IApiObject interface {
@@ -28,7 +18,19 @@ type IApiObject interface {
 	GetStatus() IApiObjectStatus
 	GetResourceVersion() string
 	SetResourceVersion(version string)
+
+	// CreateFromEtcdString is for create by unmarshal an
+	// ApiObject from etcd storage value (stored as string type)
 	CreateFromEtcdString(str string) error
+
+	// GenerateOwnerReference is used to generate OwnerReference
+	// for filling meta.ObjectMeta OwnerReference[] field of
+	// other ApiObject owned by it
+	GenerateOwnerReference() meta.OwnerReference
+
+	// AppendOwnerReference append new OwnerReference to
+	// meta.ObjectMeta OwnerReference[] field of ApiObject
+	AppendOwnerReference(meta.OwnerReference)
 }
 
 type IApiObjectList interface {
@@ -45,17 +47,17 @@ type IApiObjectStatus interface {
 	JsonMarshal() ([]byte, error)
 }
 
-func CreateApiObject(ty ApiObjectType) IApiObject {
+func CreateApiObject(ty types.ApiObjectType) IApiObject {
 	switch ty {
-	case PodObjectType:
+	case types.PodObjectType:
 		return &Pod{}
-	case ServiceObjectType:
+	case types.ServiceObjectType:
 		return &Service{}
-	case NodeObjectType:
+	case types.NodeObjectType:
 		return &Node{}
-	case ReplicasetObjectType:
+	case types.ReplicasetObjectType:
 		return &ReplicaSet{}
-	case ErrorObjectType:
+	case types.ErrorObjectType:
 		return &ErrorApiObject{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
@@ -63,15 +65,15 @@ func CreateApiObject(ty ApiObjectType) IApiObject {
 	return nil
 }
 
-func CreateApiObjectList(ty ApiObjectType) IApiObjectList {
+func CreateApiObjectList(ty types.ApiObjectType) IApiObjectList {
 	switch ty {
-	case PodObjectType:
+	case types.PodObjectType:
 		return &PodList{}
-	case ServiceObjectType:
+	case types.ServiceObjectType:
 		return &ServiceList{}
-	case NodeObjectType:
+	case types.NodeObjectType:
 		return &NodeList{}
-	case ReplicasetObjectType:
+	case types.ReplicasetObjectType:
 		return &ReplicaSetList{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
@@ -79,15 +81,15 @@ func CreateApiObjectList(ty ApiObjectType) IApiObjectList {
 	return nil
 }
 
-func CreateApiObjectStatus(ty ApiObjectType) IApiObjectStatus {
+func CreateApiObjectStatus(ty types.ApiObjectType) IApiObjectStatus {
 	switch ty {
-	case PodObjectType:
+	case types.PodObjectType:
 		return &PodStatus{}
-	case ServiceObjectType:
+	case types.ServiceObjectType:
 		return &ServiceStatus{}
-	case NodeObjectType:
+	case types.NodeObjectType:
 		return &NodeStatus{}
-	case ReplicasetObjectType:
+	case types.ReplicasetObjectType:
 		return &ReplicaSetStatus{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
@@ -95,26 +97,26 @@ func CreateApiObjectStatus(ty ApiObjectType) IApiObjectStatus {
 	return nil
 }
 
-func GetApiObjectsURL(ty ApiObjectType) string {
+func GetApiObjectsURL(ty types.ApiObjectType) string {
 	switch ty {
-	case PodObjectType:
+	case types.PodObjectType:
 		return api.PodsURL
-	case ServiceObjectType:
+	case types.ServiceObjectType:
 		return api.ServicesURL
-	case NodeObjectType:
+	case types.NodeObjectType:
 		return api.NodesURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
 }
 
-func GetWatchApiObjectsURL(ty ApiObjectType) string {
+func GetWatchApiObjectsURL(ty types.ApiObjectType) string {
 	switch ty {
-	case PodObjectType:
+	case types.PodObjectType:
 		return api.WatchPodsURL
-	case ServiceObjectType:
+	case types.ServiceObjectType:
 		return api.WatchServicesURL
-	case NodeObjectType:
+	case types.NodeObjectType:
 		return api.WatchNodesURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
