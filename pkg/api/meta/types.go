@@ -144,6 +144,16 @@ func CheckOwnerKind(ty types.ApiObjectType, owner OwnerReference) bool {
 	return string(ty) == owner.Kind
 }
 
+// HasOwnerKind checks whether there contain a ty kind owner in ownerReferences field
+func HasOwnerKind(ty types.ApiObjectType, ownerReferences []OwnerReference) (bool, OwnerReference) {
+	for _, o := range ownerReferences {
+		if o.Kind == string(ty) {
+			return true, o
+		}
+	}
+	return false, OwnerReference{}
+}
+
 // LabelSelector A label selector is a label query over a set of resources. The result of matchLabels and
 // matchExpressions are ANDed. An empty label selector matches all objects. A null
 // label selector matches no objects.
@@ -154,6 +164,19 @@ type LabelSelector struct {
 	// operator is "In", and the values array contains only "value". The requirements are ANDed.
 	// +optional
 	MatchLabels map[string]string `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
+}
+
+// MatchLabelSelector returns true only when labels have all pairs in requirement LabelSelector
+func MatchLabelSelector(requirement LabelSelector, labels map[string]string) bool {
+	flag := true
+	for reqKey, reqVal := range requirement.MatchLabels {
+		givenVal, exist := labels[reqKey]
+		if !exist || reqVal != givenVal {
+			flag = false
+			break
+		}
+	}
+	return flag
 }
 
 // ListOptions is the query options to a standard REST list call.

@@ -119,6 +119,37 @@ func (h httpServer) BindHandlers() {
 	// Replace status of the specified Service
 	// PUT /api/services/{name}/status
 	h.router.PUT(api.ServiceStatusURL, handlers.HandlePutServiceStatus)
+
+	/*--------------------- ReplicaSet ---------------------*/
+	// Create a ReplicaSet
+	// POST /api/replicasets
+	h.router.POST(api.ReplicaSetsURL, handlers.HandlePostReplicaSet)
+	// Update/Replace the specified ReplicaSet
+	// PUT /api/replicasets/{name}
+	h.router.PUT(api.ReplicaSetURL, handlers.HandlePutReplicaSet)
+	// Delete a ReplicaSet
+	// DELETE /api/replicasets/{name}
+	h.router.DELETE(api.ReplicaSetURL, handlers.HandleDeleteReplicaSet)
+	// Read the specified ReplicaSet
+	// GET /api/replicasets/{name}
+	h.router.GET(api.ReplicaSetURL, handlers.HandleGetReplicaSet)
+	// List or watch objects of kind ReplicaSet
+	// GET /api/replicasets
+	h.router.GET(api.ReplicaSetsURL, handlers.HandleGetReplicaSets)
+	// Watch changes to an object of kind ReplicaSet
+	// GET /api/watch/replicasets/{name}
+	h.router.GET(api.WatchReplicaSetURL, handlers.HandleWatchReplicaSet)
+	// Watch individual changes to a list of ReplicaSet
+	// GET /api/watch/replicasets
+	h.router.GET(api.WatchReplicaSetsURL, handlers.HandleWatchReplicaSets)
+	/*--------------------- ReplicaSet Status ---------------------*/
+	// Read status of the specified ReplicaSet
+	// GET /api/replicasets/{name}/status
+	h.router.GET(api.ReplicaSetStatusURL, handlers.HandleGetReplicaSetStatus)
+	// Replace status of the specified ReplicaSet
+	// PUT /api/replicasets/{name}/status
+	h.router.PUT(api.ReplicaSetStatusURL, handlers.HandlePutReplicaSetStatus)
+
 }
 
 //func handleGetTest(c *gin.Context) {
