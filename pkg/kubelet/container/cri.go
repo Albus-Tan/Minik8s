@@ -175,7 +175,11 @@ func buildEnvSOpt(cnt core.Container) oci.SpecOpts {
 
 func buildMountSOpt(cnt core.Container) oci.SpecOpts {
 
-	var ms []specs.Mount
+	if cnt.VolumeMounts == nil {
+		return nil
+	}
+
+	ms := []specs.Mount{}
 
 	for _, m := range cnt.VolumeMounts {
 		ms = append(ms,
