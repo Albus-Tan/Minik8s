@@ -16,6 +16,6 @@ func PodFromReplicaSet(rs *core.ReplicaSet) *core.Pod {
 		Status:     core.PodStatus{},
 	}
 	newPod.UID = meta.UIDNotGenerated
-	newPod.Name = utils.AppendRandomNameSuffix(newPod.Name)
+	newPod.Name = utils.AppendRandomNameSuffix(rs.Name)
 	return newPod
 }
