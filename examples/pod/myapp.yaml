@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: myapp
+    tier: frontend
+  name: myapp-not-replica-created
+  namespace: default
+spec:
+  containers:
+    - image: nginx
+      imagePullPolicy: Always
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources: {}
+  restartPolicy: Always
