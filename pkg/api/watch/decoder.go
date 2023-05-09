@@ -70,13 +70,24 @@ func (e *EtcdEventDecoder) convertEvent(buf []byte, ty types.ApiObjectType) (*Ev
 
 		newEvent.Version = event.Kv.Version
 		newEvent.CreateRevision = event.Kv.CreateRevision
+		newEvent.Key = string(event.Kv.Key)
+		newEvent.ModRevision = event.Kv.ModRevision
 
 	case etcd.EventTypeDelete:
 		newEvent.Type = Deleted
-	}
 
-	newEvent.Key = string(event.Kv.Key)
-	newEvent.ModRevision = event.Kv.ModRevision
+		if event.PrevKv != nil {
+			// Object in Delete event is PrevKv.Value, representing object before delete
+			err = newEvent.Object.JsonUnmarshal(event.PrevKv.Value)
+			if err != nil {
+				log.Printf("[EtcdEventDecoder][ConvertEvent] Event JsonUnmarshal failed\n")
+				return nil, err
+			}
+		}
+
+		newEvent.Key = string(event.Kv.Key)
+		newEvent.ModRevision = event.Kv.ModRevision
+	}
 
 	return newEvent, nil
 }

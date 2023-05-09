@@ -268,7 +268,7 @@ func Clear() (err error) {
 
 func Watch(key string) (context.CancelFunc, chan *Event) {
 	ctx, cancel := context.WithCancel(context.Background())
-	rch := etcdClient.Watch(ctx, key)
+	rch := etcdClient.Watch(ctx, key, clientv3.WithPrevKV())
 	ch := make(chan *Event)
 	go doWatch(rch, ch)
 	return cancel, ch
@@ -276,7 +276,7 @@ func Watch(key string) (context.CancelFunc, chan *Event) {
 
 func WatchAllWithPrefix(key string) (context.CancelFunc, chan *Event) {
 	ctx, cancel := context.WithCancel(context.Background())
-	rch := etcdClient.Watch(ctx, key, clientv3.WithPrefix())
+	rch := etcdClient.Watch(ctx, key, clientv3.WithPrefix(), clientv3.WithPrevKV())
 	ch := make(chan *Event)
 	go doWatch(rch, ch)
 	return cancel, ch

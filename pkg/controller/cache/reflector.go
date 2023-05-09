@@ -130,10 +130,15 @@ func (r *Reflector) pushNotificationEvent(watchEvent watch.Event) {
 
 // listHandler lists l
 func (r *Reflector) listHandler(l core.IApiObjectList) error {
+	logger.ControllerManagerLogger.Printf("[Reflector] %v listHandler start\n", r.expectedType)
+	logger.ControllerManagerLogger.Printf("[Reflector] %v listHandler get %v\n", r.expectedType, l)
 	items := l.GetIApiObjectArr()
 	for _, obj := range items {
-		r.store.Add(r.getObjectKey(obj), obj)
+		key := r.getObjectKey(obj)
+		r.store.Add(key, obj)
+		logger.ControllerManagerLogger.Printf("[Reflector] listHandler obj %v added to store\n", key)
 	}
+	logger.ControllerManagerLogger.Printf("[Reflector] %v listHandler finish\n", r.expectedType)
 	return nil
 }
 

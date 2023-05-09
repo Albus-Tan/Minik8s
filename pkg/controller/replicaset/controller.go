@@ -250,12 +250,13 @@ func (rsc *replicaSetController) syncReplicaSet(ctx context.Context, key string)
 
 	podsOwned, matchedNotOwnedPods, err := rsc.getPodsOwnedAndMatchedNotOwned(rs, true)
 	if err != nil {
-		logger.ReplicaSetControllerLogger.Printf("%v\n", err)
+		logger.ReplicaSetControllerLogger.Printf("[syncReplicaSet] %v\n", err)
 		return err
 	}
 
 	// count actual replica num of rs
 	actualReplicaNum := int32(len(podsOwned))
+	logger.ReplicaSetControllerLogger.Printf("[syncReplicaSet] Actual replica num of rs: %v, expected: %v\n", actualReplicaNum, rs.Spec.Replicas)
 
 	// update ReplicaSet status
 	rs.Status.Replicas = actualReplicaNum
@@ -289,7 +290,7 @@ func (rsc *replicaSetController) getPodsOwnedAndMatchedNotOwned(rs *core.Replica
 
 		pod, ok := podItem.(*core.Pod)
 		if !ok {
-			return podsOwned, matchedNotOwnedPods, errors.New(fmt.Sprintf("[syncReplicaSet] Not Pod type in PodInformer"))
+			return podsOwned, matchedNotOwnedPods, errors.New(fmt.Sprintf("[getPodsOwnedAndMatchedNotOwned] Not Pod type in PodInformer"))
 		}
 
 		// check if rs is pod owner
@@ -299,8 +300,9 @@ func (rsc *replicaSetController) getPodsOwnedAndMatchedNotOwned(rs *core.Replica
 			if meta.CheckOwnerKind(types.ReplicasetObjectType, owner) {
 				// append pod info to podsOwned
 				podsOwned = append(podsOwned, *pod)
+				logger.ReplicaSetControllerLogger.Printf("[getPodsOwnedAndMatchedNotOwned] rs %v is owner of pod %v\n", rs.UID, pod.UID)
 			} else {
-				return podsOwned, matchedNotOwnedPods, errors.New(fmt.Sprintf("[syncReplicaSet] uid: %v is not ReplicaSet type in pod OwnerReferences", rsUID))
+				return podsOwned, matchedNotOwnedPods, errors.New(fmt.Sprintf("[getPodsOwnedAndMatchedNotOwned] uid: %v is not ReplicaSet type in pod OwnerReferences", rsUID))
 			}
 
 		} else {
@@ -309,6 +311,8 @@ func (rsc *replicaSetController) getPodsOwnedAndMatchedNotOwned(rs *core.Replica
 			if getMatchedNotOwned && !hasRsOwner && meta.MatchLabelSelector(rs.Spec.Selector, pod.Labels) {
 				// label selector match and pod don't have rs owner
 				matchedNotOwnedPods = append(matchedNotOwnedPods, *pod)
+				logger.ReplicaSetControllerLogger.Printf("[getPodsOwnedAndMatchedNotOwned] label selector match and pod %v don't have rs owner\n", pod.UID)
+
 			}
 		}
 	}

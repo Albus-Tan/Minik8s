@@ -132,6 +132,8 @@ func (i *informer) run(stopCh <-chan struct{}) {
 					oldObj, exist := i.store.Get(key)
 					i.store.Update(key, obj)
 
+					logger.ControllerManagerLogger.Printf("[Informer] Added/Modified event, store updated\n")
+
 					if exist {
 						for _, handler := range i.handlers {
 							handler.OnUpdate(oldObj, obj)
@@ -145,11 +147,13 @@ func (i *informer) run(stopCh <-chan struct{}) {
 					obj, exist := i.store.Get(key)
 
 					if exist {
+						i.store.Delete(key)
+
+						logger.ControllerManagerLogger.Printf("[Informer] Delete event, store deleted\n")
+
 						for _, handler := range i.handlers {
 							handler.OnDelete(obj)
 						}
-
-						i.store.Delete(key)
 					}
 				default:
 
