@@ -32,6 +32,21 @@ type ReplicaSet struct {
 	Status ReplicaSetStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (r *ReplicaSet) DeleteOwnerReference(uid types.UID) {
+	has := false
+	idx := 0
+	for i, o := range r.OwnerReferences {
+		if o.UID == uid {
+			has = true
+			idx = i
+			break
+		}
+	}
+	if has {
+		r.OwnerReferences = append(r.OwnerReferences[:idx], r.OwnerReferences[idx+1:]...)
+	}
+}
+
 func (r *ReplicaSet) AppendOwnerReference(reference meta.OwnerReference) {
 	r.OwnerReferences = append(r.OwnerReferences, reference)
 }

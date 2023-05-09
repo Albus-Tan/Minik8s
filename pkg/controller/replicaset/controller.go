@@ -108,10 +108,13 @@ func (rsc *replicaSetController) deleteRS(obj interface{}) {
 
 	logger.ReplicaSetControllerLogger.Printf("Deleting %s, uid %s\n", rsc.Kind, rs.UID)
 
-	podsOwned, err := rsc.getPodsOwned(rs)
+	podsOwned, podsPreOwned, err := rsc.getPodsOwned(rs)
 	if err != nil {
 		logger.ReplicaSetControllerLogger.Printf("%v\n", err)
 	}
+
+	// delete rs owner ref in preowned pods
+	rsc.updatePreOwnedPods(rs, podsPreOwned)
 
 	// Delete pods of according rs
 	// TODO: check owner reference of pod in case it has other owner, meaning pod can not be delete
@@ -248,11 +251,14 @@ func (rsc *replicaSetController) syncReplicaSet(ctx context.Context, key string)
 		return errors.New(fmt.Sprintf("[syncReplicaSet] key: %v is not ReplicaSet type in RsInformer", key))
 	}
 
-	podsOwned, matchedNotOwnedPods, err := rsc.getPodsOwnedAndMatchedNotOwned(rs, true)
+	podsOwned, matchedNotOwnedPods, podsPreOwned, err := rsc.getPodsOwnedAndMatchedNotOwned(rs, true)
 	if err != nil {
 		logger.ReplicaSetControllerLogger.Printf("[syncReplicaSet] %v\n", err)
 		return err
 	}
+
+	// delete rs owner ref in preowned pods
+	rsc.updatePreOwnedPods(rs, podsPreOwned)
 
 	// count actual replica num of rs
 	actualReplicaNum := int32(len(podsOwned))
@@ -273,24 +279,25 @@ func (rsc *replicaSetController) syncReplicaSet(ctx context.Context, key string)
 	return nil
 }
 
-func (rsc *replicaSetController) getPodsOwned(rs *core.ReplicaSet) (podsOwned []core.Pod, err error) {
-	podsOwned, _, err = rsc.getPodsOwnedAndMatchedNotOwned(rs, false)
-	return podsOwned, err
+func (rsc *replicaSetController) getPodsOwned(rs *core.ReplicaSet) (podsOwned []core.Pod, podsPreOwned []core.Pod, err error) {
+	podsOwned, _, podsPreOwned, err = rsc.getPodsOwnedAndMatchedNotOwned(rs, false)
+	return podsOwned, podsPreOwned, err
 }
 
-func (rsc *replicaSetController) getPodsOwnedAndMatchedNotOwned(rs *core.ReplicaSet, getMatchedNotOwned bool) (podsOwned []core.Pod, matchedNotOwnedPods []core.Pod, err error) {
+func (rsc *replicaSetController) getPodsOwnedAndMatchedNotOwned(rs *core.ReplicaSet, getMatchedNotOwned bool) (podsOwned []core.Pod, matchedNotOwnedPods []core.Pod, podsPreOwned []core.Pod, err error) {
 	allPods := rsc.PodInformer.List()
 
 	rsUID := rs.GetUID()
 
 	podsOwned = make([]core.Pod, 0)
 	matchedNotOwnedPods = make([]core.Pod, 0)
+	podsPreOwned = make([]core.Pod, 0)
 	// calculate actual Replica pod number
 	for _, podItem := range allPods {
 
 		pod, ok := podItem.(*core.Pod)
 		if !ok {
-			return podsOwned, matchedNotOwnedPods, errors.New(fmt.Sprintf("[getPodsOwnedAndMatchedNotOwned] Not Pod type in PodInformer"))
+			return podsOwned, matchedNotOwnedPods, podsPreOwned, errors.New(fmt.Sprintf("[getPodsOwnedAndMatchedNotOwned] Not Pod type in PodInformer"))
 		}
 
 		// check if rs is pod owner
@@ -298,11 +305,21 @@ func (rsc *replicaSetController) getPodsOwnedAndMatchedNotOwned(rs *core.Replica
 
 			// rs is owner of this pod
 			if meta.CheckOwnerKind(types.ReplicasetObjectType, owner) {
-				// append pod info to podsOwned
-				podsOwned = append(podsOwned, *pod)
-				logger.ReplicaSetControllerLogger.Printf("[getPodsOwnedAndMatchedNotOwned] rs %v is owner of pod %v\n", rs.UID, pod.UID)
+				if meta.MatchLabelSelector(rs.Spec.Selector, pod.Labels) {
+					// label still match
+					// append pod info to podsOwned
+					podsOwned = append(podsOwned, *pod)
+					logger.ReplicaSetControllerLogger.Printf("[getPodsOwnedAndMatchedNotOwned] rs %v is owner of pod %v\n", rs.UID, pod.UID)
+
+				} else {
+					// label change and not match
+					// append pod info to podsPreOwned
+					podsPreOwned = append(podsPreOwned, *pod)
+					logger.ReplicaSetControllerLogger.Printf("[getPodsOwnedAndMatchedNotOwned] rs %v is previous the owner of pod %v, but not label changed\n", rs.UID, pod.UID)
+				}
+
 			} else {
-				return podsOwned, matchedNotOwnedPods, errors.New(fmt.Sprintf("[getPodsOwnedAndMatchedNotOwned] uid: %v is not ReplicaSet type in pod OwnerReferences", rsUID))
+				return podsOwned, matchedNotOwnedPods, podsPreOwned, errors.New(fmt.Sprintf("[getPodsOwnedAndMatchedNotOwned] uid: %v is not ReplicaSet type in pod OwnerReferences", rsUID))
 			}
 
 		} else {
@@ -312,12 +329,11 @@ func (rsc *replicaSetController) getPodsOwnedAndMatchedNotOwned(rs *core.Replica
 				// label selector match and pod don't have rs owner
 				matchedNotOwnedPods = append(matchedNotOwnedPods, *pod)
 				logger.ReplicaSetControllerLogger.Printf("[getPodsOwnedAndMatchedNotOwned] label selector match and pod %v don't have rs owner\n", pod.UID)
-
 			}
 		}
 	}
 
-	return podsOwned, matchedNotOwnedPods, nil
+	return podsOwned, matchedNotOwnedPods, podsPreOwned, nil
 }
 
 func (rsc *replicaSetController) increaseReplica(rs *core.ReplicaSet, matchedNotOwnedPods []core.Pod) {
@@ -451,6 +467,21 @@ func (rsc *replicaSetController) getPodOwnerReplicaSet(pod *core.Pod) (rs *core.
 			return rs
 		} else {
 			return nil
+		}
+	}
+}
+
+func (rsc *replicaSetController) updatePreOwnedPods(rs *core.ReplicaSet, preOwned []core.Pod) {
+
+	for _, p := range preOwned {
+
+		// Delete rs owner reference
+		p.DeleteOwnerReference(rs.UID)
+
+		// Ask ApiServer to update pod
+		_, _, err := rsc.PodClient.Put(p.UID, &p)
+		if err != nil {
+			logger.ReplicaSetControllerLogger.Printf("[increaseReplica] Put failed when ask ApiServer to update pod uid %v, err: %v\n", p.UID, err)
 		}
 	}
 }

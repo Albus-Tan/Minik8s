@@ -30,6 +30,21 @@ type Pod struct {
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (p *Pod) DeleteOwnerReference(uid types.UID) {
+	has := false
+	idx := 0
+	for i, o := range p.OwnerReferences {
+		if o.UID == uid {
+			has = true
+			idx = i
+			break
+		}
+	}
+	if has {
+		p.OwnerReferences = append(p.OwnerReferences[:idx], p.OwnerReferences[idx+1:]...)
+	}
+}
+
 func (p *Pod) AppendOwnerReference(reference meta.OwnerReference) {
 	p.OwnerReferences = append(p.OwnerReferences, reference)
 }

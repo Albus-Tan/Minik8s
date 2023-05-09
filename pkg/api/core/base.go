@@ -31,6 +31,10 @@ type IApiObject interface {
 	// AppendOwnerReference append new OwnerReference to
 	// meta.ObjectMeta OwnerReference[] field of ApiObject
 	AppendOwnerReference(meta.OwnerReference)
+
+	// DeleteOwnerReference delete OwnerReference of uid from
+	// meta.ObjectMeta OwnerReference[] field of ApiObject
+	DeleteOwnerReference(uid types.UID)
 }
 
 type IApiObjectList interface {

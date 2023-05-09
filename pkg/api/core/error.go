@@ -11,6 +11,10 @@ type ErrorApiObject struct {
 	msg string
 }
 
+func (e *ErrorApiObject) DeleteOwnerReference(uid types.UID) {
+	panic("ErrorApiObject: this method should not be called!")
+}
+
 func (e *ErrorApiObject) AppendOwnerReference(_ meta.OwnerReference) {
 	panic("ErrorApiObject: this method should not be called!")
 }
