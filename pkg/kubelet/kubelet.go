@@ -10,6 +10,7 @@ import (
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/apiclient/listwatch"
+	"minik8s/pkg/kubelet/constants"
 	"minik8s/pkg/kubelet/container"
 	"minik8s/pkg/kubelet/pod"
 )
@@ -136,11 +137,22 @@ loop:
 func (k *kubelet) handlePodCreate(pod *core.Pod) {
 	// TODO: handle create new pod event
 
-	// TODO: run container and update field in pod
-	for idx, c := range pod.Spec.Containers {
+	// install Initial Containers
+	pod.Spec.InitContainers = append(pod.Spec.InitContainers, constants.InitialPauseContainer)
+
+	for _, c := range pod.Spec.InitContainers {
 		err := k.criClient.CreateContainer(c)
 		if err != nil {
-			log.Printf("[handlePodCreate] create container %v failed: %v", pod.Spec.Containers[idx].Name, err)
+			log.Printf("[handlePodCreate] create init container %v failed: %v", c.Name, err)
+			return
+		}
+	}
+
+	// TODO: run container and update field in pod
+	for _, c := range pod.Spec.Containers {
+		err := k.criClient.CreateContainer(c)
+		if err != nil {
+			log.Printf("[handlePodCreate] create container %v failed: %v", c.Name, err)
 			return
 		}
 	}
