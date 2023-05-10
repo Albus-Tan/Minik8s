@@ -3,21 +3,21 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"minik8s/pkg/api"
-	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 )
 
 /*--------------------- Node ---------------------*/
 
 func HandlePostNode(c *gin.Context) {
-	handlePostObject(c, core.NodeObjectType)
+	handlePostObject(c, types.NodeObjectType)
 }
 
 func HandlePutNode(c *gin.Context) {
-	handlePutObject(c, core.NodeObjectType)
+	handlePutObject(c, types.NodeObjectType)
 }
 
 func HandleDeleteNode(c *gin.Context) {
-	handleDeleteObject(c, core.NodeObjectType)
+	handleDeleteObject(c, types.NodeObjectType)
 }
 
 func HandleDeleteNodes(c *gin.Context) {
@@ -26,29 +26,29 @@ func HandleDeleteNodes(c *gin.Context) {
 }
 
 func HandleGetNode(c *gin.Context) {
-	handleGetObject(c, core.NodeObjectType)
+	handleGetObject(c, types.NodeObjectType)
 }
 
 func HandleGetNodes(c *gin.Context) {
-	handleGetObjects(c, core.NodeObjectType)
+	handleGetObjects(c, types.NodeObjectType)
 }
 
 func HandleWatchNode(c *gin.Context) {
 	resourceURL := api.NodesURL + c.Param("name")
-	handleWatchObjectAndStatus(c, core.NodeObjectType, resourceURL)
+	handleWatchObjectAndStatus(c, types.NodeObjectType, resourceURL)
 }
 
 func HandleWatchNodes(c *gin.Context) {
 	resourceURL := api.NodesURL
-	handleWatchObjectsAndStatus(c, core.NodeObjectType, resourceURL)
+	handleWatchObjectsAndStatus(c, types.NodeObjectType, resourceURL)
 }
 
 func HandleGetNodeStatus(c *gin.Context) {
 	resourceURL := api.NodesURL + c.Param("name")
-	handleGetObjectStatus(c, core.NodeObjectType, resourceURL)
+	handleGetObjectStatus(c, types.NodeObjectType, resourceURL)
 }
 
 func HandlePutNodeStatus(c *gin.Context) {
 	etcdURL := api.NodesURL + c.Param("name")
-	handlePutObjectStatus(c, core.NodeObjectType, etcdURL)
+	handlePutObjectStatus(c, types.NodeObjectType, etcdURL)
 }

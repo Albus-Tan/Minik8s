@@ -4,7 +4,7 @@ import (
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/watch"
-	client "minik8s/pkg/client/interface"
+	client "minik8s/pkg/apiclient/interface"
 )
 
 // Lister is any object that knows how to perform an initial list.

@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
-	"log"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiserver/etcd"
+	"minik8s/pkg/logger"
 	"minik8s/utils"
 	"net/http"
 )
 
-func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
+func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 
 	// read request body
 	buf, err := io.ReadAll(c.Request.Body)
@@ -28,11 +29,11 @@ func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 		return
 	}
-	//log.Printf("[apiserver] JsonUnmarshal buf %v", string(buf))
+	//logger.ApiServerLogger.Printf("[apiserver] JsonUnmarshal buf %v", string(buf))
 
 	// generate uuid for {ApiObject}
 	objectUID := utils.GenerateUID()
-	log.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
+	logger.ApiServerLogger.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
 	newObject.SetUID(objectUID)
 	// set object ResourceVersion
 	createVersion := etcd.Rvm.GetNextResourceVersion()
@@ -43,13 +44,13 @@ func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 		return
 	}
-	//log.Printf("[apiserver] JsonMarshal buf %v", string(buf))
+	//logger.ApiServerLogger.Printf("[apiserver] JsonMarshal buf %v", string(buf))
 
 	etcdPath := c.Request.URL.Path + objectUID
 
 	// put/update {ApiObject} info into etcd
 	err, newVersion := etcd.Put(etcdPath, string(buf))
-	log.Printf("[apiserver] generate new %v: json ResourceVersion %v, current ResourceVersion %v", ty, createVersion, newVersion)
+	logger.ApiServerLogger.Printf("[apiserver] generate new %v: json ResourceVersion %v, current ResourceVersion %v", ty, createVersion, newVersion)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
@@ -57,7 +58,7 @@ func handlePostObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handlePutObject(c *gin.Context, ty core.ApiObjectType) {
+func handlePutObject(c *gin.Context, ty types.ApiObjectType) {
 	// check if {ApiObject} exist
 	has, versionHas, err := etcd.HasWithVersion(c.Request.URL.Path)
 	if err != nil {
@@ -111,7 +112,7 @@ func handlePutObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleDeleteObject(c *gin.Context, ty core.ApiObjectType) {
+func handleDeleteObject(c *gin.Context, ty types.ApiObjectType) {
 	// check if {ApiObject} exist
 	has, err := etcd.Has(c.Request.URL.Path)
 	if err != nil {
@@ -132,7 +133,7 @@ func handleDeleteObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleGetObject(c *gin.Context, ty core.ApiObjectType) {
+func handleGetObject(c *gin.Context, ty types.ApiObjectType) {
 	objectStr, err := etcd.Get(c.Request.URL.Path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
@@ -149,7 +150,7 @@ func handleGetObject(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
+func handleGetObjects(c *gin.Context, ty types.ApiObjectType) {
 	objects, err := etcd.GetAllWithPrefix(c.Request.URL.Path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
@@ -157,7 +158,7 @@ func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
 		objectList := core.CreateApiObjectList(ty)
 		err := objectList.AppendItemsFromStr(objects)
 		if err != nil {
-			log.Println("[apiserver] handleGetObjects objectList.AppendItemsFromStr failed", err)
+			logger.ApiServerLogger.Println("[apiserver] handleGetObjects objectList.AppendItemsFromStr failed", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 			return
 		}
@@ -165,7 +166,7 @@ func handleGetObjects(c *gin.Context, ty core.ApiObjectType) {
 	}
 }
 
-func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleWatchObjectAndStatus(c *gin.Context, ty types.ApiObjectType, resourceURL string) {
 	// check if {ApiObject} exist
 	has, err := etcd.Has(resourceURL)
 	if err != nil {
@@ -178,7 +179,7 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 	}
 
 	// register watch
-	log.Printf("[apiserver][HandleWatch%v] Start watching resourceURL %v\n", ty, resourceURL)
+	logger.ApiServerLogger.Printf("[apiserver][HandleWatch%v] Start watching resourceURL %v\n", ty, resourceURL)
 	cancel, ch := etcd.WatchAllWithPrefix(resourceURL)
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
@@ -188,14 +189,14 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 			case etcd.EventTypeDelete:
 				event, err := json.Marshal(ev)
 				if err != nil {
-					log.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
+					logger.ApiServerLogger.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
 					cancel()
 					c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 					return
 				}
 				_, err = fmt.Fprintf(c.Writer, "%v\n", string(event))
 				if err != nil {
-					log.Printf("[apiserver][HandleWatch%v] fail to write to client, cancel watch task\n", ty)
+					logger.ApiServerLogger.Printf("[apiserver][HandleWatch%v] fail to write to client, cancel watch task\n", ty)
 					cancel()
 					c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 					return
@@ -203,20 +204,20 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 				flusher.Flush()
 
 				// cancel watch after delete
-				log.Printf("[apiserver] %v delete, cancel watch task\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver] %v delete, cancel watch task\n", ty)
 				cancel()
 
 				c.JSON(http.StatusOK, gin.H{"status": "OK"})
 				return
 			case etcd.EventTypePut:
-				log.Printf("[apiserver] %v put\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver] %v put\n", ty)
 			default:
 				// will not reach here
 			}
 
 			event, err := json.Marshal(ev)
 			if err != nil {
-				log.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
 				cancel()
 				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 				return
@@ -224,14 +225,14 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 			_, err = fmt.Fprintf(c.Writer, "%v\n", string(event))
 
 			if err != nil {
-				log.Printf("[apiserver][HandleWatch%v] fail to write to client, cancel watch task\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver][HandleWatch%v] fail to write to client, cancel watch task\n", ty)
 				cancel()
 				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 				return
 			}
 			flusher.Flush()
 		case <-c.Request.Context().Done():
-			log.Printf("[apiserver] Connection closed, cancel watch task\n")
+			logger.ApiServerLogger.Printf("[apiserver] Connection closed, cancel watch task\n")
 			cancel()
 			c.JSON(http.StatusOK, gin.H{"status": "OK"})
 			return
@@ -241,9 +242,9 @@ func handleWatchObjectAndStatus(c *gin.Context, ty core.ApiObjectType, resourceU
 	}
 }
 
-func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleWatchObjectsAndStatus(c *gin.Context, ty types.ApiObjectType, resourceURL string) {
 	// register watch
-	log.Printf("[apiserver][HandleWatch%vs] Start watching resourceURL %v\n", ty, resourceURL)
+	logger.ApiServerLogger.Printf("[apiserver][HandleWatch%vs] Start watching resourceURL %v\n", ty, resourceURL)
 	cancel, ch := etcd.WatchAllWithPrefix(resourceURL)
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
@@ -251,15 +252,15 @@ func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resource
 		case ev := <-ch:
 			switch ev.Type {
 			case etcd.EventTypeDelete:
-				log.Printf("[apiserver] %v delete\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver] %v delete\n", ty)
 			case etcd.EventTypePut:
-				log.Printf("[apiserver] %v put\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver] %v put\n", ty)
 			default:
 				// will not reach here
 			}
 			event, err := json.Marshal(ev)
 			if err != nil {
-				log.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver][HandleWatch%vs] json.Marshal event failed, cancel watch task\n", ty)
 				cancel()
 				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 				return
@@ -267,14 +268,14 @@ func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resource
 			_, err = fmt.Fprintf(c.Writer, "%v\n", string(event))
 
 			if err != nil {
-				log.Printf("[apiserver][HandleWatch%vs] fail to write to client, cancel watch task\n", ty)
+				logger.ApiServerLogger.Printf("[apiserver][HandleWatch%vs] fail to write to client, cancel watch task\n", ty)
 				cancel()
 				c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
 				return
 			}
 			flusher.Flush()
 		case <-c.Request.Context().Done():
-			log.Printf("[apiserver][HandleWatch%vs] Connection closed, cancel watch task\n", ty)
+			logger.ApiServerLogger.Printf("[apiserver][HandleWatch%vs] Connection closed, cancel watch task\n", ty)
 			cancel()
 			c.JSON(http.StatusOK, gin.H{"status": "OK"})
 			return
@@ -284,7 +285,7 @@ func handleWatchObjectsAndStatus(c *gin.Context, ty core.ApiObjectType, resource
 	}
 }
 
-func handleGetObjectStatus(c *gin.Context, ty core.ApiObjectType, resourceURL string) {
+func handleGetObjectStatus(c *gin.Context, ty types.ApiObjectType, resourceURL string) {
 	objectJson, err := etcd.Get(resourceURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
@@ -302,7 +303,7 @@ func handleGetObjectStatus(c *gin.Context, ty core.ApiObjectType, resourceURL st
 	}
 }
 
-func handlePutObjectStatus(c *gin.Context, ty core.ApiObjectType, etcdURL string) {
+func handlePutObjectStatus(c *gin.Context, ty types.ApiObjectType, etcdURL string) {
 
 	has, versionHas, err := etcd.HasWithVersion(etcdURL)
 	if err != nil {

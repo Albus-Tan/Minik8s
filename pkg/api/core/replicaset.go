@@ -1,8 +1,10 @@
 package core
 
 import (
+	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
+	"strconv"
 )
 
 // ReplicaSet ensures that a specified number of pod replicas are running at any given time.
@@ -30,6 +32,83 @@ type ReplicaSet struct {
 	Status ReplicaSetStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (r *ReplicaSet) DeleteOwnerReference(uid types.UID) {
+	has := false
+	idx := 0
+	for i, o := range r.OwnerReferences {
+		if o.UID == uid {
+			has = true
+			idx = i
+			break
+		}
+	}
+	if has {
+		r.OwnerReferences = append(r.OwnerReferences[:idx], r.OwnerReferences[idx+1:]...)
+	}
+}
+
+func (r *ReplicaSet) AppendOwnerReference(reference meta.OwnerReference) {
+	r.OwnerReferences = append(r.OwnerReferences, reference)
+}
+
+func (r *ReplicaSet) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: r.APIVersion,
+		Kind:       r.Kind,
+		Name:       r.Name,
+		UID:        r.UID,
+		Controller: false,
+	}
+}
+
+func (r *ReplicaSet) SetUID(uid types.UID) {
+	r.ObjectMeta.UID = uid
+}
+
+func (r *ReplicaSet) GetUID() types.UID {
+	return r.ObjectMeta.UID
+}
+
+func (r *ReplicaSet) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &r)
+}
+
+func (r *ReplicaSet) JsonMarshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func (r *ReplicaSet) JsonUnmarshalStatus(data []byte) error {
+	return json.Unmarshal(data, &(r.Status))
+}
+
+func (r *ReplicaSet) JsonMarshalStatus() ([]byte, error) {
+	return json.Marshal(r.Status)
+}
+
+func (r *ReplicaSet) SetStatus(s IApiObjectStatus) bool {
+	status, ok := s.(*ReplicaSetStatus)
+	if ok {
+		r.Status = *status
+	}
+	return ok
+}
+
+func (r *ReplicaSet) GetStatus() IApiObjectStatus {
+	return &r.Status
+}
+
+func (r *ReplicaSet) GetResourceVersion() string {
+	return r.ObjectMeta.ResourceVersion
+}
+
+func (r *ReplicaSet) SetResourceVersion(version string) {
+	r.ObjectMeta.ResourceVersion = version
+}
+
+func (r *ReplicaSet) CreateFromEtcdString(str string) error {
+	return r.JsonUnmarshal([]byte(str))
+}
+
 // ReplicaSetSpec is the specification of a ReplicaSet.
 type ReplicaSetSpec struct {
 	// Replicas is the number of desired replicas.
@@ -43,7 +122,7 @@ type ReplicaSetSpec struct {
 	// Label keys and values that must match in order to be controlled by this replica set.
 	// It must match the pod template's labels.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
-	Selector *meta.LabelSelector `json:"selector" protobuf:"bytes,2,opt,name=selector"`
+	Selector meta.LabelSelector `json:"selector" protobuf:"bytes,2,opt,name=selector"`
 
 	// Template is the object that describes the pod that will be created if
 	// insufficient replicas are detected.
@@ -79,6 +158,14 @@ type ReplicaSetStatus struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	Conditions []ReplicaSetCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,6,rep,name=conditions"`
+}
+
+func (r *ReplicaSetStatus) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &r)
+}
+
+func (r *ReplicaSetStatus) JsonMarshal() ([]byte, error) {
+	return json.Marshal(r)
 }
 
 type ReplicaSetConditionType string
@@ -119,3 +206,57 @@ const (
 	ConditionFalse   ConditionStatus = "False"
 	ConditionUnknown ConditionStatus = "Unknown"
 )
+
+type ReplicaSetList struct {
+	meta.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	// +optional
+	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of pods.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items []ReplicaSet `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (r *ReplicaSetList) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &r)
+}
+
+func (r *ReplicaSetList) JsonMarshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func (r *ReplicaSetList) AddItemFromStr(objectStr string) error {
+	object := &ReplicaSet{}
+	buf, err := strconv.Unquote(objectStr)
+	err = object.JsonUnmarshal([]byte(buf))
+	if err != nil {
+		return err
+	}
+	r.Items = append(r.Items, *object)
+	return nil
+}
+
+func (r *ReplicaSetList) AppendItemsFromStr(objectStrs []string) error {
+	for _, obj := range objectStrs {
+		object := &ReplicaSet{}
+		err := object.JsonUnmarshal([]byte(obj))
+		if err != nil {
+			return err
+		}
+		r.Items = append(r.Items, *object)
+	}
+	return nil
+}
+
+func (r *ReplicaSetList) GetItems() any {
+	return r.Items
+}
+
+func (r *ReplicaSetList) GetIApiObjectArr() (res []IApiObject) {
+	for _, item := range r.Items {
+		res = append(res, &item)
+	}
+	return res
+}
