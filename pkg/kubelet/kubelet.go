@@ -11,30 +11,42 @@ import (
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/apiclient/listwatch"
 	"minik8s/pkg/kubelet/constants"
-	"minik8s/pkg/kubelet/container"
+	"minik8s/pkg/kubelet/container/cri"
 	"minik8s/pkg/kubelet/pod"
 )
 
 type Kubelet interface {
 	Run()
+	Close()
 }
 
-func New() Kubelet {
+func New() (Kubelet, error) {
 
 	podClient, err := apiclient.NewRESTClient(types.PodObjectType)
-	podListerWatcher := listwatch.NewListWatchFromClient(podClient)
 	if err != nil {
-		log.Fatal(err.Error())
+		return nil, err
 	}
 
+	criClient, err := cri.NewDocker()
+	if err != nil {
+		return nil, err
+	}
 
 	return &kubelet{
-		name:             "Kubelet", // TODO: change to node name + Kubelet
+		name:             "Kubelet", // FIXME: change to node name + Kubelet
 		podClient:        podClient,
 		podListerWatcher: listwatch.NewListWatchFromClient(podClient),
 		podManager:       pod.NewPodManager(),
-		criClient:        container.NewCriClient(),
+		criClient:        criClient,
+	}, nil
+}
+
+func (k *kubelet) Close() {
+	for _, c := range k.podCancelFunc {
+		c()
 	}
+
+	k.criClient.Close()
 }
 
 type kubelet struct {
@@ -42,7 +54,11 @@ type kubelet struct {
 	podClient        client.Interface
 	podListerWatcher listwatch.ListerWatcher
 	podManager       pod.Manager
-	criClient        container.CriClient
+	criClient        cri.CriClient
+
+	pcfLock       sync.RWMutex
+	podCancelFunc map[string]context.CancelFunc
+	podCancelWG   map[string]*sync.WaitGroup
 }
 
 func (k *kubelet) Run() {
@@ -55,11 +71,8 @@ func (k *kubelet) Run() {
 	defer cancel()
 
 	// start watch pods
-	// TODO: for multi machine, change it to watching bind pod events
+	// FIXME: for multi machine, change it to watching bind pod events
 	k.watchPods(ctx)
-
-	//TODO
-	panic("implement me")
 }
 
 /*---------------------------- Watch Pods ----------------------------*/
@@ -135,65 +148,55 @@ loop:
 }
 
 func (k *kubelet) handlePodCreate(pod *core.Pod) {
-	// TODO: handle create new pod event
+	k.pcfLock.Lock()
+	defer k.pcfLock.Unlock()
 
 	// install Initial Containers
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers, constants.InitialPauseContainer)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
+
 	for _, c := range pod.Spec.InitContainers {
-		err := k.criClient.CreateContainer(c)
-		if err != nil {
-			log.Printf("[handlePodCreate] create init container %v failed: %v", c.Name, err)
-			return
-		}
+		wg.Add(1)
+		go k.criClient.ContainerEnsure(ctx, c, wg)
 	}
 
-	// TODO: run container and update field in pod
 	for _, c := range pod.Spec.Containers {
-		err := k.criClient.CreateContainer(c)
-		if err != nil {
-			log.Printf("[handlePodCreate] create container %v failed: %v", c.Name, err)
-			return
-		}
+		wg.Add(1)
+		go k.criClient.ContainerEnsure(ctx, c, wg)
 	}
+	// FIXME: update container status field in pod
 
-	// TODO: update pod status
+	// FIXME: update pod status
 
-	// TODO: send new pod status back to apiserver
-
+	// FIXME: send new pod status back to apiserver
+	// register cancel function
+	k.podCancelFunc[pod.UID] = cancel
+	k.podCancelWG[pod.UID] = wg
 	// add pod to podManager
 	k.podManager.AddPod(pod)
 }
 
 func (k *kubelet) handlePodModify(pod *core.Pod) {
-	// TODO: handle pod modified in apiserver etcd
-
-	// TODO: process actual update and update field in pod
-
-	// TODO: update pod status
-
-	// TODO: send new pod status back to apiserver
-
-	// update pod in podManager
-	k.podManager.UpdatePod(pod)
+	k.handlePodDelete(pod)
+	k.handlePodCreate(pod)
 }
 
 func (k *kubelet) handlePodDelete(pod *core.Pod) {
-	// TODO: handle pod deleted in apiserver etcd
+	k.pcfLock.Lock()
+	defer k.pcfLock.Unlock()
+	// FIXME: update field in pod
 
-	// TODO: process actual delete such as container delete and update field in pod
-	for idx, c := range pod.Spec.Containers {
-		err := k.criClient.CleanContainer(c.Name) // TODO @wjr: I'm not sure whether I give the correct param here
-		if err != nil {
-			log.Printf("[handlePodCreate] clean container %v failed: %v", pod.Spec.Containers[idx].Name, err)
-			return
-		}
+	// FIXME: send new pod status back to apiserver
+	// call cancel function to delete containers
+	if cancel := k.podCancelFunc[pod.UID]; cancel == nil {
+		log.Println("[ERROR] delete uncreated pod")
+	} else {
+		cancel()
+		wg := k.podCancelWG[pod.UID]
+		wg.Wait()
 	}
-
-	// TODO: update pod status
-
-	// TODO: send new pod status back to apiserver
-
 	// delete pod in podManager
 	k.podManager.DeletePod(pod)
 }
