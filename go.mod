@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/containerd/containerd v1.7.0
 	github.com/gin-gonic/gin v1.9.0
+	github.com/google/cadvisor v0.47.1
 	github.com/google/uuid v1.3.0
 	github.com/opencontainers/runtime-spec v1.1.0-rc.1
 	github.com/spf13/cobra v1.7.0
@@ -90,4 +91,5 @@ require (
 	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	k8s.io/klog/v2 v2.90.1 // indirect
 )

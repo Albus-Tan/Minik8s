@@ -1,20 +1,19 @@
 package config
 
-const (
-	HttpScheme    = "http://"
-	Host          = "localhost"
-	Port          = ":8080"
-	latestVersion = "v1.0.1"
-)
-
-const (
-	EtcdHost = "localhost"
-	EtcdPort = ":2379"
-)
+const latestVersion = "v1.0.1"
 
 func Version() string {
 	return latestVersion
 }
+
+const HttpScheme = "http://"
+
+/*--------------- ApiServer ---------------*/
+// Http server gin config
+const (
+	Host = "localhost"
+	Port = ":8080"
+)
 
 func ApiUrl() string {
 	return HttpScheme + Host + Port + "/api/"
@@ -22,4 +21,21 @@ func ApiUrl() string {
 
 func ApiServerUrl() string {
 	return HttpScheme + Host + Port
+}
+
+// Etcd storage config
+const (
+	EtcdHost = "localhost"
+	EtcdPort = ":2379"
+)
+
+/*--------------- Kubelet ---------------*/
+// cadvisor config
+const (
+	CadvisorHost = "localhost"
+	CadvisorPort = ":8090"
+)
+
+func CadvisorUrl() string {
+	return HttpScheme + CadvisorHost + CadvisorPort
 }

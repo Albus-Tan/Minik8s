@@ -10,6 +10,7 @@ import (
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/apiclient/listwatch"
+	"minik8s/pkg/kubelet/cadvisor"
 	"minik8s/pkg/kubelet/container"
 	"minik8s/pkg/kubelet/pod"
 )
@@ -29,6 +30,7 @@ func New() Kubelet {
 		podListerWatcher: podListerWatcher,
 		podManager:       pod.NewPodManager(),
 		criClient:        container.NewCriClient(),
+		cadvisorClient:   cadvisor.NewClient(),
 	}
 }
 
@@ -38,6 +40,8 @@ type kubelet struct {
 	podListerWatcher listwatch.ListerWatcher
 	podManager       pod.Manager
 	criClient        container.CriClient
+
+	cadvisorClient cadvisor.Interface
 }
 
 func (k *kubelet) Run() {
@@ -49,12 +53,25 @@ func (k *kubelet) Run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// start cadvisor on current node
+	k.startCadvisor()
+
 	// start watch pods
 	// TODO: for multi machine, change it to watching bind pod events
 	k.watchPods(ctx)
 
 	//TODO
 	panic("implement me")
+}
+
+/*---------------------------- cadvisor ----------------------------*/
+func (k *kubelet) startCadvisor() {
+	log.Printf("[Kubelet] Start cadvisor\n")
+	err := k.cadvisorClient.Start()
+	if err != nil {
+		log.Printf("[Kubelet] Start cadvisor error: %v\n", err)
+		return
+	}
 }
 
 /*---------------------------- Watch Pods ----------------------------*/
