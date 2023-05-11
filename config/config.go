@@ -8,8 +8,8 @@ const (
 )
 
 const (
-	EtcdHost = "111.186.56.24"
-	EtcdPort = ":2380"
+	EtcdHost = "localhost"
+	EtcdPort = ":2379"
 )
 
 func Version() string {

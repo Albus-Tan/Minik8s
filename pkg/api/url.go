@@ -31,6 +31,15 @@ const (
 	ServiceStatusURL = "/api/services/:name/status"
 )
 
+// ReplicaSet
+const (
+	ReplicaSetsURL      = "/api/replicasets/"
+	ReplicaSetURL       = "/api/replicasets/:name"
+	WatchReplicaSetsURL = "/api/watch/replicasets/"
+	WatchReplicaSetURL  = "/api/watch/replicasets/:name"
+	ReplicaSetStatusURL = "/api/replicasets/:name/status"
+)
+
 // ------------------ Test API ---------------------
 
 const (

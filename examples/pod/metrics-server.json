@@ -3,19 +3,10 @@
 	"kind": "Pod",
 	"metadata": {
 		"labels": {
-			"k8s-app": "metrics-server",
-			"pod-template-hash": "79d58c6d85"
+			"k8s-app": "metrics-server"
 		},
-		"name": "metrics-server-79d58c6d85-ffq58",
-		"namespace": "kube-system",
-		"ownerReferences": [{
-			"apiVersion": "apps/v1",
-			"controller": true,
-			"kind": "ReplicaSet",
-			"name": "metrics-server-79d58c6d85",
-			"uid": "e868f4a2-3aa0-475e-ac17-accd627b09ab"
-		}],
-		"uid": "e8b77ea2-ed39-4432-bc7a-b639f0256f90"
+		"name": "metrics-server",
+		"namespace": "kube-system"
 	},
 	"spec": {
 		"containers": [{
@@ -59,19 +50,5 @@
 				"name": "kube-api-access-q8nkm"
 			}
 		]
-	},
-	"status": {
-		"containerStatuses": [{
-			"containerID": "containerd://01d767eeb8450efc5fc99a5694650ed8300a803e269b59f961a184e7df18be40",
-			"image": "registry.aliyuncs.com/google_containers/metrics-server:v0.6.3",
-			"imageID": "registry.aliyuncs.com/google_containers/metrics-server@sha256:c60778fa1c44d0c5a0c4530ebe83f9243ee6fc02f4c3dc59226c201931350b10",
-			"name": "metrics-server",
-			"state": {
-				"running": {}
-			}
-		}],
-		"hostIP": "172.29.239.22",
-		"phase": "Running",
-		"podIP": "10.244.2.17"
 	}
 }

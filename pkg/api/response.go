@@ -75,3 +75,7 @@ func (r *PutResponse) FillResponse(resp *http.Response) error {
 
 	return nil
 }
+
+type DeleteResponse struct {
+	Response `json:",inline"`
+}

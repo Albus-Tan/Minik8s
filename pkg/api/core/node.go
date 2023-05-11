@@ -29,6 +29,35 @@ type Node struct {
 	Status NodeStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (n *Node) DeleteOwnerReference(uid types.UID) {
+	has := false
+	idx := 0
+	for i, o := range n.OwnerReferences {
+		if o.UID == uid {
+			has = true
+			idx = i
+			break
+		}
+	}
+	if has {
+		n.OwnerReferences = append(n.OwnerReferences[:idx], n.OwnerReferences[idx+1:]...)
+	}
+}
+
+func (n *Node) AppendOwnerReference(reference meta.OwnerReference) {
+	n.OwnerReferences = append(n.OwnerReferences, reference)
+}
+
+func (n *Node) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: n.APIVersion,
+		Kind:       n.Kind,
+		Name:       n.Name,
+		UID:        n.UID,
+		Controller: false,
+	}
+}
+
 func (n *Node) CreateFromEtcdString(str string) error {
 	return n.JsonUnmarshal([]byte(str))
 }

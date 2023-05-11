@@ -77,7 +77,6 @@ func (c *dockerClient) ContainerEnsure(ctx context.Context, cnt core.Container, 
 	if err := cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
 		log.Println(err.Error())
 	}
-	resultC, errC := cli.ContainerWait(ctx, id, container.WaitConditionNotRunning)
 	for {
 		select {
 		case <-ctx.Done():
@@ -85,10 +84,6 @@ func (c *dockerClient) ContainerEnsure(ctx context.Context, cnt core.Container, 
 				log.Println(err.Error())
 			}
 			return
-		case <-resultC:
-			_ = cli.ContainerStart(ctx, id, types.ContainerStartOptions{})
-		case <-errC:
-			_ = cli.ContainerStart(ctx, id, types.ContainerStartOptions{})
 		default:
 			time.Sleep(1 * time.Second)
 		}
@@ -154,7 +149,13 @@ func buildContainerConfig(cnt core.Container) *container.Config {
 }
 
 func buildHostConfig(cnt core.Container) *container.HostConfig {
-	return &container.HostConfig{Mounts: buildMount(cnt)}
+	return &container.HostConfig{
+		Mounts: buildMount(cnt),
+		RestartPolicy: container.RestartPolicy{
+			Name:              "always",
+			MaximumRetryCount: 0, //TODO
+		},
+	}
 }
 
 func buildMount(cnt core.Container) []mount.Mount {

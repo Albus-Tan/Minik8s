@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiclient/listwatch"
 	"os"
 	"testing"
@@ -23,13 +24,13 @@ func TestPostPod(t *testing.T) {
 		return
 	}
 
-	newObject := core.CreateApiObject(core.PodObjectType)
+	newObject := core.CreateApiObject(types.PodObjectType)
 	err = newObject.JsonUnmarshal(jsonData)
 	if err != nil {
 		fmt.Println("newObject.JsonUnmarshal failed: ", err)
 		return
 	}
-	rc, _ := NewRESTClient(core.PodObjectType)
+	rc, _ := NewRESTClient(types.PodObjectType)
 	code, resp, err := rc.Post(newObject)
 	if err != nil {
 		return
@@ -47,13 +48,13 @@ func TestPutPod(t *testing.T) {
 		return
 	}
 
-	newObject := core.CreateApiObject(core.PodObjectType)
+	newObject := core.CreateApiObject(types.PodObjectType)
 	err = newObject.JsonUnmarshal(jsonData)
 	if err != nil {
 		fmt.Println("newObject.JsonUnmarshal failed: ", err)
 		return
 	}
-	rc, _ := NewRESTClient(core.PodObjectType)
+	rc, _ := NewRESTClient(types.PodObjectType)
 	fmt.Printf("name %v\n", name)
 	code, resp, err := rc.Put(name, newObject)
 	fmt.Printf("code: %v, resp %v\n", code, resp)
@@ -63,7 +64,7 @@ func TestPutPod(t *testing.T) {
 }
 
 func TestGetPod(t *testing.T) {
-	rc, _ := NewRESTClient(core.PodObjectType)
+	rc, _ := NewRESTClient(types.PodObjectType)
 	res, err := rc.Get(name)
 	if err != nil {
 		return
@@ -72,7 +73,7 @@ func TestGetPod(t *testing.T) {
 }
 
 func TestGetAllPod(t *testing.T) {
-	rc, _ := NewRESTClient(core.PodObjectType)
+	rc, _ := NewRESTClient(types.PodObjectType)
 	res, err := rc.GetAll()
 	if err != nil {
 		return
@@ -81,8 +82,8 @@ func TestGetAllPod(t *testing.T) {
 }
 
 func TestDeletePod(t *testing.T) {
-	rc, _ := NewRESTClient(core.PodObjectType)
-	res, err := rc.Delete(name)
+	rc, _ := NewRESTClient(types.PodObjectType)
+	_, res, err := rc.Delete(name)
 	if err != nil {
 		return
 	}
@@ -90,7 +91,7 @@ func TestDeletePod(t *testing.T) {
 }
 
 func TestWatchAllPods(t *testing.T) {
-	rc, err := NewRESTClient(core.PodObjectType)
+	rc, err := NewRESTClient(types.PodObjectType)
 	if err != nil {
 		return
 	}

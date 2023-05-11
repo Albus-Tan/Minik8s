@@ -30,6 +30,35 @@ type Service struct {
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (s *Service) DeleteOwnerReference(uid types.UID) {
+	has := false
+	idx := 0
+	for i, o := range s.OwnerReferences {
+		if o.UID == uid {
+			has = true
+			idx = i
+			break
+		}
+	}
+	if has {
+		s.OwnerReferences = append(s.OwnerReferences[:idx], s.OwnerReferences[idx+1:]...)
+	}
+}
+
+func (s *Service) AppendOwnerReference(reference meta.OwnerReference) {
+	s.OwnerReferences = append(s.OwnerReferences, reference)
+}
+
+func (s *Service) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: s.APIVersion,
+		Kind:       s.Kind,
+		Name:       s.Name,
+		UID:        s.UID,
+		Controller: false,
+	}
+}
+
 func (s *Service) CreateFromEtcdString(str string) error {
 	return s.JsonUnmarshal([]byte(str))
 }

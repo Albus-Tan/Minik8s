@@ -1,10 +1,10 @@
 package cache
 
 import (
-	"log"
-	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	"minik8s/pkg/apiclient/listwatch"
+	"minik8s/pkg/logger"
 	"time"
 )
 
@@ -23,7 +23,7 @@ type Informer interface {
 }
 
 type informer struct {
-	objType   core.ApiObjectType
+	objType   types.ApiObjectType
 	reflector *Reflector
 	handlers  []ResourceEventHandler
 
@@ -52,7 +52,7 @@ const defaultResyncPeriod = 30 * time.Second
 //     long as possible (until the upstream source closes the watch or times out,
 //     or you stop the controller).
 //   - h is the object you want notifications sent to.
-func NewInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType, resyncPeriod time.Duration, h ResourceEventHandler) Informer {
+func NewInformer(lw listwatch.ListerWatcher, objType types.ApiObjectType, resyncPeriod time.Duration, h ResourceEventHandler) Informer {
 	s := NewThreadSafeStore()
 	q := NewWorkQueue()
 	return &informer{
@@ -64,7 +64,7 @@ func NewInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType, resyncP
 	}
 }
 
-func NewDefaultInformer(lw listwatch.ListerWatcher, objType core.ApiObjectType) Informer {
+func NewDefaultInformer(lw listwatch.ListerWatcher, objType types.ApiObjectType) Informer {
 	s := NewThreadSafeStore()
 	q := NewWorkQueue()
 	return &informer{
@@ -98,7 +98,7 @@ func (i *informer) run(stopCh <-chan struct{}) {
 		// Run reflector to start list and watch
 		err := i.reflector.Run(stopCh, syncChan)
 		if err != nil {
-			log.Printf("[Informer] reflector run error: %v\n", err)
+			logger.ControllerManagerLogger.Printf("[Informer] reflector run error: %v\n", err)
 			return
 		}
 	}()
@@ -132,6 +132,8 @@ func (i *informer) run(stopCh <-chan struct{}) {
 					oldObj, exist := i.store.Get(key)
 					i.store.Update(key, obj)
 
+					logger.ControllerManagerLogger.Printf("[Informer] Added/Modified event, store updated\n")
+
 					if exist {
 						for _, handler := range i.handlers {
 							handler.OnUpdate(oldObj, obj)
@@ -145,11 +147,13 @@ func (i *informer) run(stopCh <-chan struct{}) {
 					obj, exist := i.store.Get(key)
 
 					if exist {
+						i.store.Delete(key)
+
+						logger.ControllerManagerLogger.Printf("[Informer] Delete event, store deleted\n")
+
 						for _, handler := range i.handlers {
 							handler.OnDelete(obj)
 						}
-
-						i.store.Delete(key)
 					}
 				default:
 
@@ -163,8 +167,8 @@ func (i *informer) run(stopCh <-chan struct{}) {
 func (i *informer) Run(stopCh <-chan struct{}) {
 
 	go func() {
-		log.Printf("[%vInformer] %v informer start\n", i.objType, i.objType)
-		defer log.Printf("[%vInformer] %v informer exit\n", i.objType, i.objType)
+		logger.ControllerManagerLogger.Printf("[%vInformer] %v informer start\n", i.objType, i.objType)
+		defer logger.ControllerManagerLogger.Printf("[%vInformer] %v informer exit\n", i.objType, i.objType)
 		i.run(stopCh)
 	}()
 	return

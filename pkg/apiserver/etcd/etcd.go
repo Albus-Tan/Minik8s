@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"log"
 	"minik8s/config"
+	"minik8s/pkg/logger"
 	"strconv"
 	"sync"
 	"time"
@@ -39,28 +39,28 @@ type ResourceVersionManager struct {
 func (r *ResourceVersionManager) GetNextResourceVersion() string {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	log.Printf("[ResourceVersionManager] GetNextResourceVersion %v\n", r.version)
+	logger.ApiServerLogger.Printf("[ResourceVersionManager] GetNextResourceVersion %v\n", r.version)
 	return strconv.FormatInt(r.version+1, 10)
 }
 
 func (r *ResourceVersionManager) GetResourceVersion() string {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	log.Printf("[ResourceVersionManager] GetResourceVersion %v\n", r.version)
+	logger.ApiServerLogger.Printf("[ResourceVersionManager] GetResourceVersion %v\n", r.version)
 	return strconv.FormatInt(r.version, 10)
 }
 
 func (r *ResourceVersionManager) setResourceVersion(v string) {
 	r.mutex.Lock()
 	r.version, _ = strconv.ParseInt(v, 10, 64)
-	log.Printf("[ResourceVersionManager] SetResourceVersion %v\n", r.version)
+	logger.ApiServerLogger.Printf("[ResourceVersionManager] SetResourceVersion %v\n", r.version)
 	r.mutex.Unlock()
 }
 
 func (r *ResourceVersionManager) init(v int64) {
 	r.mutex.Lock()
 	r.version = v
-	log.Printf("[ResourceVersionManager] init version %v\n", r.version)
+	logger.ApiServerLogger.Printf("[ResourceVersionManager] init version %v\n", r.version)
 	r.mutex.Unlock()
 }
 
@@ -74,16 +74,16 @@ func Init() {
 	var err error
 	etcdClient, err = clientv3.New(etcdConfig)
 	if err != nil {
-		log.Printf("[etcd] connect to etcd failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] connect to etcd failed, err:%v\n", err)
 	} else {
-		log.Printf("[etcd] connect to etcd success\n")
+		logger.ApiServerLogger.Printf("[etcd] connect to etcd success\n")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	status, err := etcdClient.Status(ctx, etcdEndpoint)
 	cancel()
 	if err != nil {
-		log.Printf("[etcd] get etcdClient status failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] get etcdClient status failed, err:%v\n", err)
 	}
 
 	Rvm.init(status.Header.Revision)
@@ -92,9 +92,9 @@ func Init() {
 func Close() {
 	err := etcdClient.Close()
 	if err != nil {
-		log.Printf("[etcd] close etcd client failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] close etcd client failed, err:%v\n", err)
 	} else {
-		log.Printf("[etcd] etcd client closed\n")
+		logger.ApiServerLogger.Printf("[etcd] etcd client closed\n")
 	}
 }
 
@@ -103,7 +103,7 @@ func Put(key, value string) (err error, newVersion string) {
 	resp, err := etcdClient.Put(ctx, key, value)
 	cancel()
 	if err != nil {
-		log.Printf("[etcd] Put failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] Put failed, err:%v\n", err)
 		switch err {
 		case context.Canceled:
 			fmt.Printf("[etcd] ctx is canceled by another routine: %v\n", err)
@@ -127,7 +127,7 @@ func CheckVersionPut(key, value, oldVersion string) (err error, newVersion strin
 	resp, err := etcdClient.Put(ctx, key, value, clientv3.WithPrevKV())
 	cancel()
 	if err != nil {
-		log.Printf("[etcd] Put failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] Put failed, err:%v\n", err)
 		switch err {
 		case context.Canceled:
 			fmt.Printf("[etcd] ctx is canceled by another routine: %v\n", err)
@@ -160,7 +160,7 @@ func Get(key string) (value string, err error) {
 	fmt.Printf("[etcd] Get: resp %v\n", resp)
 
 	if err != nil {
-		log.Printf("[etcd] Get failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] Get failed, err:%v\n", err)
 		return EmptyGetResult, err
 	}
 
@@ -178,7 +178,7 @@ func GetWithVersion(key string) (value string, version string, err error) {
 	fmt.Printf("[etcd] GetWithVersion: resp %v\n", resp)
 
 	if err != nil {
-		log.Printf("[etcd] Get failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] Get failed, err:%v\n", err)
 		return EmptyGetResult, version, err
 	}
 
@@ -195,7 +195,7 @@ func Has(key string) (value bool, err error) {
 	resp, err := etcdClient.Get(ctx, key)
 	cancel()
 	if err != nil {
-		log.Printf("[etcd] Has failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] Has failed, err:%v\n", err)
 		return false, err
 	}
 
@@ -212,7 +212,7 @@ func HasWithVersion(key string) (value bool, version string, err error) {
 	cancel()
 
 	if err != nil {
-		log.Printf("[etcd] HasWithVersion failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] HasWithVersion failed, err:%v\n", err)
 		return false, version, err
 	}
 
@@ -229,7 +229,7 @@ func GetAllWithPrefix(keyPrefix string) (values []string, err error) {
 	resp, err := etcdClient.Get(ctx, keyPrefix, clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		log.Printf("[etcd] GetAllWithPrefix failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] GetAllWithPrefix failed, err:%v\n", err)
 		return nil, err
 	}
 	for _, ev := range resp.Kvs {
@@ -245,7 +245,7 @@ func Delete(key string) (err error) {
 	Rvm.setResourceVersion(strconv.FormatInt(resp.Header.Revision, 10))
 
 	if err != nil {
-		log.Printf("[etcd] Delete failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] Delete failed, err:%v\n", err)
 	}
 	return err
 }
@@ -257,7 +257,7 @@ func DeleteAllWithPrefix(key string) (err error) {
 	Rvm.setResourceVersion(strconv.FormatInt(resp.Header.Revision, 10))
 
 	if err != nil {
-		log.Printf("[etcd] DeleteAll failed, err:%v\n", err)
+		logger.ApiServerLogger.Printf("[etcd] DeleteAll failed, err:%v\n", err)
 	}
 	return err
 }
@@ -268,7 +268,7 @@ func Clear() (err error) {
 
 func Watch(key string) (context.CancelFunc, chan *Event) {
 	ctx, cancel := context.WithCancel(context.Background())
-	rch := etcdClient.Watch(ctx, key)
+	rch := etcdClient.Watch(ctx, key, clientv3.WithPrevKV())
 	ch := make(chan *Event)
 	go doWatch(rch, ch)
 	return cancel, ch
@@ -276,7 +276,7 @@ func Watch(key string) (context.CancelFunc, chan *Event) {
 
 func WatchAllWithPrefix(key string) (context.CancelFunc, chan *Event) {
 	ctx, cancel := context.WithCancel(context.Background())
-	rch := etcdClient.Watch(ctx, key, clientv3.WithPrefix())
+	rch := etcdClient.Watch(ctx, key, clientv3.WithPrefix(), clientv3.WithPrevKV())
 	ch := make(chan *Event)
 	go doWatch(rch, ch)
 	return cancel, ch
@@ -286,7 +286,7 @@ func doWatch(rch clientv3.WatchChan, ch chan *Event) {
 	// continue to read rch until it's closed
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
-			log.Printf("[etcd] watch notified %s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			logger.ApiServerLogger.Printf("[etcd] watch notified %s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
 			ch <- (*Event)(ev)
 		}
 	}

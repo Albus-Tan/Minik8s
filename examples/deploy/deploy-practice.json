@@ -1,0 +1,65 @@
+{
+  "kind": "Deployment",
+  "apiVersion": "apps/v1",
+  "metadata": {
+    "name": "deploy-practice"
+  },
+  "spec": {
+    "replicas": 3,
+    "selector": {
+      "matchLabels": {
+        "app": "deploy-practice"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "deploy-practice"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "fileserver",
+            "image": "hejingkai/fileserver:latest",
+            "ports": [
+              {
+                "name": "p1",
+                "containerPort": 8080
+              }
+            ],
+            "volumeMounts": [
+              {
+                "name": "download",
+                "mountPath": "/usr/share/files"
+              }
+            ]
+          },
+          {
+            "name": "downloader",
+            "image": "hejingkai/downloader:latest",
+            "ports": [
+              {
+                "name": "p2",
+                "containerPort": 3000
+              }
+            ],
+            "volumeMounts": [
+              {
+                "name": "download",
+                "mountPath": "/data"
+              }
+            ]
+          }
+        ],
+        "volumes": [
+          {
+            "name": "download",
+            "emptyDir": {
+            }
+          }
+        ]
+      }
+    }
+  }
+}

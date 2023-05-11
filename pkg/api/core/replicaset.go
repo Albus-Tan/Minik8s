@@ -32,6 +32,35 @@ type ReplicaSet struct {
 	Status ReplicaSetStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (r *ReplicaSet) DeleteOwnerReference(uid types.UID) {
+	has := false
+	idx := 0
+	for i, o := range r.OwnerReferences {
+		if o.UID == uid {
+			has = true
+			idx = i
+			break
+		}
+	}
+	if has {
+		r.OwnerReferences = append(r.OwnerReferences[:idx], r.OwnerReferences[idx+1:]...)
+	}
+}
+
+func (r *ReplicaSet) AppendOwnerReference(reference meta.OwnerReference) {
+	r.OwnerReferences = append(r.OwnerReferences, reference)
+}
+
+func (r *ReplicaSet) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: r.APIVersion,
+		Kind:       r.Kind,
+		Name:       r.Name,
+		UID:        r.UID,
+		Controller: false,
+	}
+}
+
 func (r *ReplicaSet) SetUID(uid types.UID) {
 	r.ObjectMeta.UID = uid
 }
@@ -93,7 +122,7 @@ type ReplicaSetSpec struct {
 	// Label keys and values that must match in order to be controlled by this replica set.
 	// It must match the pod template's labels.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
-	Selector *meta.LabelSelector `json:"selector" protobuf:"bytes,2,opt,name=selector"`
+	Selector meta.LabelSelector `json:"selector" protobuf:"bytes,2,opt,name=selector"`
 
 	// Template is the object that describes the pod that will be created if
 	// insufficient replicas are detected.
