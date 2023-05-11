@@ -20,7 +20,7 @@ type Kubelet interface {
 	Run()
 }
 
-func New() Kubelet {
+func New(node *core.Node) Kubelet {
 
 	podClient, _ := apiclient.NewRESTClient(types.PodObjectType)
 	podListerWatcher := listwatch.NewListWatchFromClient(podClient)
@@ -31,12 +31,14 @@ func New() Kubelet {
 		podListerWatcher: podListerWatcher,
 		podManager:       pod.NewPodManager(),
 		criClient:        container.NewCriClient(),
-		cadvisorClient:   cadvisor2.NewClient(config.CadvisorUrl()),
+		cadvisorClient:   cadvisor2.NewClient(config.CadvisorUrl(config.CadvisorHost)),
+		node:             node,
 	}
 }
 
 type kubelet struct {
 	name             string
+	node             *core.Node
 	podClient        client.Interface
 	podListerWatcher listwatch.ListerWatcher
 	podManager       pod.Manager

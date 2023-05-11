@@ -36,6 +36,6 @@ const (
 	CadvisorPort = ":8090"
 )
 
-func CadvisorUrl() string {
-	return HttpScheme + CadvisorHost + CadvisorPort
+func CadvisorUrl(HostAddress string) string {
+	return HttpScheme + HostAddress + CadvisorPort
 }

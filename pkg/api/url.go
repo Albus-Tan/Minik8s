@@ -40,6 +40,15 @@ const (
 	ReplicaSetStatusURL = "/api/replicasets/:name/status"
 )
 
+// HorizontalPodAutoscaler
+const (
+	HorizontalPodAutoscalersURL      = "/api/hpa/"
+	HorizontalPodAutoscalerURL       = "/api/hpa/:name"
+	WatchHorizontalPodAutoscalersURL = "/api/watch/hpa/"
+	WatchHorizontalPodAutoscalerURL  = "/api/watch/hpa/:name"
+	HorizontalPodAutoscalerStatusURL = "/api/hpa/:name/status"
+)
+
 // ------------------ Test API ---------------------
 
 const (

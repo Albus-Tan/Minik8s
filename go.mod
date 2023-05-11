@@ -10,7 +10,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.1.0-rc.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
-	go.etcd.io/etcd/api/v3 v3.5.8
+	go.etcd.io/etcd/api/v3 v3.5.9
 	go.etcd.io/etcd/client/v3 v3.5.8
 	gopkg.in/yaml.v3 v3.0.1
 )

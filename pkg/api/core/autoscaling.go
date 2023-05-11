@@ -1,8 +1,10 @@
 package core
 
 import (
+	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
+	"strconv"
 )
 
 // HorizontalPodAutoscaler is the configuration for a horizontal pod
@@ -23,6 +25,83 @@ type HorizontalPodAutoscaler struct {
 	// status is the current information about the autoscaler.
 	// +optional
 	Status HorizontalPodAutoscalerStatus `json:"status,omitempty"`
+}
+
+func (h *HorizontalPodAutoscaler) SetUID(uid types.UID) {
+	h.ObjectMeta.UID = uid
+}
+
+func (h *HorizontalPodAutoscaler) GetUID() types.UID {
+	return h.ObjectMeta.UID
+}
+
+func (h *HorizontalPodAutoscaler) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &h)
+}
+
+func (h *HorizontalPodAutoscaler) JsonMarshal() ([]byte, error) {
+	return json.Marshal(h)
+}
+
+func (h *HorizontalPodAutoscaler) JsonUnmarshalStatus(data []byte) error {
+	return json.Unmarshal(data, &(h.Status))
+}
+
+func (h *HorizontalPodAutoscaler) JsonMarshalStatus() ([]byte, error) {
+	return json.Marshal(h.Status)
+}
+
+func (h *HorizontalPodAutoscaler) SetStatus(s IApiObjectStatus) bool {
+	status, ok := s.(*HorizontalPodAutoscalerStatus)
+	if ok {
+		h.Status = *status
+	}
+	return ok
+}
+
+func (h *HorizontalPodAutoscaler) GetStatus() IApiObjectStatus {
+	return &h.Status
+}
+
+func (h *HorizontalPodAutoscaler) GetResourceVersion() string {
+	return h.ObjectMeta.ResourceVersion
+}
+
+func (h *HorizontalPodAutoscaler) SetResourceVersion(version string) {
+	h.ObjectMeta.ResourceVersion = version
+}
+
+func (h *HorizontalPodAutoscaler) CreateFromEtcdString(str string) error {
+	return h.JsonUnmarshal([]byte(str))
+}
+
+func (h *HorizontalPodAutoscaler) GenerateOwnerReference() meta.OwnerReference {
+	return meta.OwnerReference{
+		APIVersion: h.APIVersion,
+		Kind:       h.Kind,
+		Name:       h.Name,
+		UID:        h.UID,
+		Controller: false,
+	}
+}
+
+func (h *HorizontalPodAutoscaler) AppendOwnerReference(reference meta.OwnerReference) {
+	h.OwnerReferences = append(h.OwnerReferences, reference)
+}
+
+func (h *HorizontalPodAutoscaler) DeleteOwnerReference(uid types.UID) {
+	has := false
+	idx := 0
+	for i, o := range h.OwnerReferences {
+		if o.UID == uid {
+			has = true
+			idx = i
+			break
+		}
+	}
+	if has {
+		h.OwnerReferences = append(h.OwnerReferences[:idx], h.OwnerReferences[idx+1:]...)
+	}
 }
 
 // HorizontalPodAutoscalerSpec describes the desired functionality of the HorizontalPodAutoscaler.
@@ -74,6 +153,14 @@ type HorizontalPodAutoscalerStatus struct {
 	// DesiredReplicas is the desired number of replicas of pods managed by this autoscaler,
 	// as last calculated by the autoscaler.
 	DesiredReplicas int32 `json:"desiredReplicas,omitempty"`
+}
+
+func (h *HorizontalPodAutoscalerStatus) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &h)
+}
+
+func (h *HorizontalPodAutoscalerStatus) JsonMarshal() ([]byte, error) {
+	return json.Marshal(h)
 }
 
 // CrossVersionObjectReference contains enough information to let you identify the referred resource.
@@ -257,4 +344,59 @@ type HPAScalingPolicy struct {
 	// PeriodSeconds specifies the window of time for which the policy should hold true.
 	// PeriodSeconds must be greater than zero and less than or equal to 1800 (30 min).
 	PeriodSeconds int32 `json:"periodSeconds"`
+}
+
+// HorizontalPodAutoscalerList is a list of HorizontalPodAutoscalers.
+type HorizontalPodAutoscalerList struct {
+	meta.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	// +optional
+	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of pods.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items []HorizontalPodAutoscaler `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (h *HorizontalPodAutoscalerList) JsonUnmarshal(data []byte) error {
+	return json.Unmarshal(data, &h)
+}
+
+func (h *HorizontalPodAutoscalerList) JsonMarshal() ([]byte, error) {
+	return json.Marshal(h)
+}
+
+func (h *HorizontalPodAutoscalerList) AddItemFromStr(objectStr string) error {
+	object := &HorizontalPodAutoscaler{}
+	buf, err := strconv.Unquote(objectStr)
+	err = object.JsonUnmarshal([]byte(buf))
+	if err != nil {
+		return err
+	}
+	h.Items = append(h.Items, *object)
+	return nil
+}
+
+func (h *HorizontalPodAutoscalerList) AppendItemsFromStr(objectStrs []string) error {
+	for _, obj := range objectStrs {
+		object := &HorizontalPodAutoscaler{}
+		err := object.JsonUnmarshal([]byte(obj))
+		if err != nil {
+			return err
+		}
+		h.Items = append(h.Items, *object)
+	}
+	return nil
+}
+
+func (h *HorizontalPodAutoscalerList) GetItems() any {
+	return h.Items
+}
+
+func (h *HorizontalPodAutoscalerList) GetIApiObjectArr() (res []IApiObject) {
+	for _, item := range h.Items {
+		res = append(res, &item)
+	}
+	return res
 }

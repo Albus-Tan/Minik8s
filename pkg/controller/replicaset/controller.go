@@ -481,7 +481,7 @@ func (rsc *replicaSetController) updatePreOwnedPods(rs *core.ReplicaSet, preOwne
 		// Ask ApiServer to update pod
 		_, _, err := rsc.PodClient.Put(p.UID, &p)
 		if err != nil {
-			logger.ReplicaSetControllerLogger.Printf("[increaseReplica] Put failed when ask ApiServer to update pod uid %v, err: %v\n", p.UID, err)
+			logger.ReplicaSetControllerLogger.Printf("[updatePreOwnedPods] Put failed when ask ApiServer to update pod uid %v, err: %v\n", p.UID, err)
 		}
 	}
 }

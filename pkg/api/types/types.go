@@ -10,11 +10,12 @@ type ApiObjectType string
 // These are the valid ApiObjectType.
 // Kind field in TypeMeta should be one of these
 const (
-	ErrorObjectType      ApiObjectType = "Error"
-	PodObjectType        ApiObjectType = "Pod"
-	ServiceObjectType    ApiObjectType = "Service"
-	ReplicasetObjectType ApiObjectType = "ReplicaSet"
-	NodeObjectType       ApiObjectType = "Node"
+	ErrorObjectType                   ApiObjectType = "Error"
+	PodObjectType                     ApiObjectType = "Pod"
+	ServiceObjectType                 ApiObjectType = "Service"
+	ReplicasetObjectType              ApiObjectType = "ReplicaSet"
+	HorizontalPodAutoscalerObjectType ApiObjectType = "HorizontalPodAutoscaler"
+	NodeObjectType                    ApiObjectType = "Node"
 )
 
 // ResourceName is the name identifying various resources in a ResourceList.
