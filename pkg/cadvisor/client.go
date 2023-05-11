@@ -7,7 +7,6 @@ import (
 	info "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"log"
-	"minik8s/config"
 )
 
 type Client struct {
@@ -18,7 +17,7 @@ type Client struct {
 
 // More info: https://github.com/google/cadvisor/tree/master/client
 
-func NewClient() Interface {
+func NewClient(url string) Interface {
 
 	nilCli := &Client{
 		staticClient:    nil,
@@ -26,19 +25,19 @@ func NewClient() Interface {
 		streamingClient: nil,
 	}
 
-	staticClient, err := client.NewClient(config.CadvisorUrl())
+	staticClient, err := client.NewClient(url)
 	if err != nil {
 		log.Printf("[cadvisor] NewClient tried to make staticClient but got error %v\n", err)
 		return nilCli
 	}
 
-	v2StaticClient, err := clientv2.NewClient(config.CadvisorUrl())
+	v2StaticClient, err := clientv2.NewClient(url)
 	if err != nil {
 		log.Printf("[cadvisor] NewClient tried to make v2StaticClient but got error %v\n", err)
 		return nilCli
 	}
 
-	streamingClient, err := client.NewClient(config.CadvisorUrl())
+	streamingClient, err := client.NewClient(url)
 	if err != nil {
 		log.Printf("[cadvisor] NewClient tried to make streamingClient but got error %v\n", err)
 		return nilCli
