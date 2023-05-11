@@ -13,6 +13,7 @@ import (
 	"minik8s/pkg/kubelet/constants"
 	"minik8s/pkg/kubelet/container/cri"
 	"minik8s/pkg/kubelet/pod"
+	"sync"
 )
 
 type Kubelet interface {
@@ -38,6 +39,9 @@ func New() (Kubelet, error) {
 		podListerWatcher: listwatch.NewListWatchFromClient(podClient),
 		podManager:       pod.NewPodManager(),
 		criClient:        criClient,
+		pcfLock:          sync.RWMutex{},
+		podCancelFunc:    make(map[string]context.CancelFunc),
+		podCancelWG:      make(map[string]*sync.WaitGroup),
 	}, nil
 }
 
@@ -84,23 +88,21 @@ func (k *kubelet) watchPods(ctx context.Context) {
 
 	log.Printf("[Kubelet] Start watch pods\n")
 
-	go func() {
-		w, err := k.podListerWatcher.Watch()
-		if err != nil {
-			log.Printf("[Kubelet] Watch pods error: %v\n", err)
-		}
+	w, err := k.podListerWatcher.Watch()
+	if err != nil {
+		log.Printf("[Kubelet] Watch pods error: %v\n", err)
+	}
 
-		err = k.handleWatchPods(w, ctx)
-		w.Stop() // stop watch
+	err = k.handleWatchPods(w, ctx)
+	w.Stop() // stop watch
 
-		if err == errorStopRequested {
-			return
-		}
+	if err == errorStopRequested {
+		return
+	}
 
-		if err != nil {
-			log.Printf("[Kubelet] Watch pods error: %v\n", err)
-		}
-	}()
+	if err != nil {
+		log.Printf("[Kubelet] Watch pods error: %v\n", err)
+	}
 
 }
 
