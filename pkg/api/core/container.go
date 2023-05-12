@@ -100,6 +100,8 @@ type Container struct {
 	// Default is false.
 	// +optional
 	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
+
+	Master string `json:"-"`
 }
 
 // PullPolicy describes a policy for if/when to pull a container image

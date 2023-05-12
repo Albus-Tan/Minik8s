@@ -2,18 +2,16 @@ package cri
 
 import (
 	"context"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"log"
 	"minik8s/pkg/api/core"
-	"sync"
-	"time"
 )
 
-func NewDocker() (CriClient, error) {
+func NewDocker() (Client, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
@@ -30,6 +28,18 @@ type dockerClient struct {
 	Client *client.Client
 }
 
+func (c *dockerClient) ContainerStart(ctx context.Context, name string) error {
+	return c.Client.ContainerStart(ctx, c.ContainerId(ctx, name), types.ContainerStartOptions{})
+}
+
+func (c *dockerClient) ContainerInspect(ctx context.Context, name string) (bool, error) {
+	resp, err := c.Client.ContainerInspect(ctx, c.ContainerId(ctx, name))
+	if err != nil {
+		return false, err
+	}
+	return resp.State.Running, nil
+}
+
 func soundClose(cli *client.Client) {
 	err := cli.Close()
 	if err != nil {
@@ -37,61 +47,52 @@ func soundClose(cli *client.Client) {
 	}
 }
 
-func (c *dockerClient) ContainerEnsure(ctx context.Context, cnt core.Container, wg *sync.WaitGroup) {
-	defer wg.Done()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		log.Println(err.Error())
-		return
+func (c *dockerClient) ContainerCreate(ctx context.Context, cnt core.Container) (string, error) {
+	if len(cnt.Master) == 0 {
+		return c.containerMasterCreate(ctx, cnt)
+	} else {
+		return c.containerSlaverCreate(ctx, cnt)
 	}
-	defer soundClose(cli)
-	if err := handlImagePullPolicy(ctx, cli, cnt.Image, cnt.ImagePullPolicy); err != nil {
-		log.Println(err.Error())
-		return
-	}
+}
 
-	id := c.containerGet(ctx, cnt.Name)
-
-	if len(id) == 0 {
-	create:
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				resp, err := cli.ContainerCreate(ctx, buildContainerConfig(cnt), buildHostConfig(cnt), nil, nil, cnt.Name)
-				if err != nil {
-					log.Println(err.Error())
-					time.Sleep(1 * time.Second)
-					continue
-				} else {
-					id = resp.ID
-
-					break create
-				}
-			}
-		}
-
-	}
-
-	if err := cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
-		log.Println(err.Error())
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			if err := cli.ContainerRemove(context.Background(), id, types.ContainerRemoveOptions{Force: true}); err != nil {
-				log.Println(err.Error())
-			}
-			return
-		default:
-			time.Sleep(1 * time.Second)
-		}
-	}
+func (c *dockerClient) ContainerRemove(ctx context.Context, name string) error {
+	return c.Client.ContainerRemove(ctx, c.ContainerId(ctx, name), types.ContainerRemoveOptions{
+		RemoveVolumes: false,
+		RemoveLinks:   false,
+		Force:         true,
+	})
 
 }
 
-func (c *dockerClient) containerGet(ctx context.Context, name string) string {
+func (c *dockerClient) containerMasterCreate(ctx context.Context, cnt core.Container) (string, error) {
+	if cnt.Master != "" {
+		return "", fmt.Errorf("HasMaster")
+	}
+	if err := c.handleImagePull(ctx, cnt); err != nil {
+		return "", err
+	}
+	resp, err := c.Client.ContainerCreate(ctx, buildMasterContainerConfig(cnt), buildMasterHostConfig(cnt), nil, nil, cnt.Name)
+	if err == nil {
+		return "", err
+	}
+	return resp.ID, nil
+}
+
+func (c *dockerClient) containerSlaverCreate(ctx context.Context, cnt core.Container) (string, error) {
+	if cnt.Master == "" {
+		return "", fmt.Errorf("NoMaster")
+	}
+	if err := c.handleImagePull(ctx, cnt); err != nil {
+		return "", err
+	}
+	resp, err := c.Client.ContainerCreate(ctx, buildSlaverContainerConfig(cnt.Master, cnt), buildSlaverHostConfig(cnt.Master, cnt), nil, nil, cnt.Name)
+	if err == nil {
+		return "", err
+	}
+	return resp.ID, nil
+}
+
+func (c *dockerClient) ContainerId(ctx context.Context, name string) string {
 	list, err := c.Client.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
 		return ""
@@ -107,38 +108,7 @@ func (c *dockerClient) containerGet(ctx context.Context, name string) string {
 	return ""
 }
 
-func (c *dockerClient) VolumeCreate(ctx context.Context, name string) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	defer soundClose(cli)
-	if _, err := cli.VolumeCreate(ctx, volume.VolumeCreateBody{Name: name}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *dockerClient) VolumeRemove(ctx context.Context, name string) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	defer soundClose(cli)
-	if err := cli.VolumeRemove(ctx, name, true); err != nil {
-		return err
-	}
-	return nil
-}
-
-func handlImagePullPolicy(ctx context.Context, cli *client.Client, image string, policy core.PullPolicy) error {
-	//FIXME policy is ignored and pull always is used
-	_, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
-	return err
-}
-
-func buildContainerConfig(cnt core.Container) *container.Config {
+func buildMasterContainerConfig(cnt core.Container) *container.Config {
 	return &container.Config{
 		Tty:        cnt.TTY,
 		StdinOnce:  cnt.StdinOnce,
@@ -148,13 +118,84 @@ func buildContainerConfig(cnt core.Container) *container.Config {
 	}
 }
 
-func buildHostConfig(cnt core.Container) *container.HostConfig {
+func buildSlaverContainerConfig(master string, cnt core.Container) *container.Config {
+	return &container.Config{
+		Hostname:        "",
+		Domainname:      "",
+		User:            "",
+		AttachStdin:     false,
+		AttachStdout:    false,
+		AttachStderr:    false,
+		ExposedPorts:    nil,
+		Tty:             cnt.TTY,
+		OpenStdin:       false,
+		StdinOnce:       cnt.StdinOnce,
+		Env:             nil,
+		Cmd:             append(cnt.Command, cnt.Args...),
+		Healthcheck:     nil,
+		ArgsEscaped:     false,
+		Image:           cnt.Image,
+		Volumes:         nil,
+		WorkingDir:      cnt.WorkingDir,
+		Entrypoint:      nil,
+		NetworkDisabled: false,
+		MacAddress:      "",
+		OnBuild:         nil,
+		Labels:          nil,
+		StopSignal:      "",
+		StopTimeout:     nil,
+		Shell:           nil,
+	}
+}
+
+func buildMasterHostConfig(cnt core.Container) *container.HostConfig {
 	return &container.HostConfig{
 		Mounts: buildMount(cnt),
-		RestartPolicy: container.RestartPolicy{
-			Name:              "always",
-			MaximumRetryCount: 0, //TODO
-		},
+	}
+}
+
+func buildSlaverHostConfig(master string, cnt core.Container) *container.HostConfig {
+	return &container.HostConfig{
+		Binds:           nil,
+		ContainerIDFile: "",
+		LogConfig:       container.LogConfig{},
+		NetworkMode:     container.NetworkMode("container:" + master),
+		PortBindings:    nil,
+		RestartPolicy:   container.RestartPolicy{},
+		AutoRemove:      false,
+		VolumeDriver:    "",
+		VolumesFrom:     nil,
+		CapAdd:          nil,
+		CapDrop:         nil,
+		CgroupnsMode:    "",
+		DNS:             nil,
+		DNSOptions:      nil,
+		DNSSearch:       nil,
+		ExtraHosts:      nil,
+		GroupAdd:        nil,
+		IpcMode:         "",
+		Cgroup:          container.CgroupSpec("container:" + master),
+		Links:           nil,
+		OomScoreAdj:     0,
+		PidMode:         "",
+		Privileged:      false,
+		PublishAllPorts: false,
+		ReadonlyRootfs:  false,
+		SecurityOpt:     nil,
+		StorageOpt:      nil,
+		Tmpfs:           nil,
+		UTSMode:         "",
+		UsernsMode:      "",
+		ShmSize:         0,
+		Sysctls:         nil,
+		Runtime:         "",
+		ConsoleSize:     [2]uint{},
+		Isolation:       "",
+		Resources:       container.Resources{},
+		Mounts:          buildMount(cnt),
+		MaskedPaths:     nil,
+		ReadonlyPaths:   nil,
+		Init:            nil,
 	}
 }
 
@@ -169,4 +210,19 @@ func buildMount(cnt core.Container) []mount.Mount {
 	}
 
 	return mnt
+}
+
+func (c *dockerClient) handleImagePull(ctx context.Context, cnt core.Container) error {
+	switch cnt.ImagePullPolicy {
+	default:
+		fallthrough
+	case core.PullIfNotPresent:
+		//FIXME: check if present
+		fallthrough
+	case core.PullAlways:
+		_, err := c.Client.ImagePull(ctx, cnt.Image, types.ImagePullOptions{})
+		return err
+	case core.PullNever:
+		return nil
+	}
 }

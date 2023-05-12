@@ -10,7 +10,11 @@ import (
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/apiclient/listwatch"
+	"minik8s/pkg/kubelet/constants"
+	"minik8s/pkg/kubelet/container/cri"
 	"minik8s/pkg/kubelet/pod"
+	"sync"
+	"time"
 )
 
 type Kubelet interface {
@@ -25,11 +29,17 @@ func New() (Kubelet, error) {
 		return nil, err
 	}
 
+	criClient, err := cri.NewDocker()
+	if err != nil {
+		return nil, err
+	}
+
 	return &kubelet{
 		name:             "Kubelet", // FIXME: change to node name + Kubelet
 		podClient:        podClient,
 		podListerWatcher: listwatch.NewListWatchFromClient(podClient),
 		podManager:       pod.NewPodManager(),
+		criClient:        criClient,
 	}, nil
 }
 
@@ -41,6 +51,8 @@ type kubelet struct {
 	podClient        client.Interface
 	podListerWatcher listwatch.ListerWatcher
 	podManager       pod.Manager
+	criClient        cri.Client
+	lock             sync.RWMutex
 }
 
 func (k *kubelet) Run() {
@@ -128,25 +140,197 @@ loop:
 }
 
 func (k *kubelet) handlePodCreate(pod *core.Pod) {
-	// FIXME: update container status field in pod
-
-	// FIXME: update pod status
-
-	// FIXME: send new pod status back to apiserver
+	k.lock.Lock()
+	defer k.lock.Unlock()
+	ctx, cancel := context.WithCancel(context.Background())
+	k.createMasterContainer(ctx, pod)
+	k.createContainers(ctx, pod, pod.Spec.Containers)
+	go k.startWatchContainers(ctx, pod, pod.Spec.Containers)
+	pod.CancelWorker = cancel
+	pod.Status.Phase = core.PodRunning
+	_, _, err := k.podClient.PutStatus(pod.UID, pod)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	// add pod to podManager
 	k.podManager.AddPod(pod)
 }
 
 func (k *kubelet) handlePodModify(pod *core.Pod) {
+	k.lock.Lock()
+	defer k.lock.Unlock()
+	old, found := k.podManager.GetPodByUID(pod.UID)
+	if !found {
+		k.handlePodCreate(pod)
+		return
+	}
+	up := containersNew(old.Spec.Containers, pod.Spec.Containers)
+	down := containersNew(pod.Spec.Containers, old.Spec.Containers)
+	if len(up) == 0 && len(down) == 0 {
+		k.podManager.UpdatePod(pod)
+	} else {
+		old.CancelWorker()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		pod.CancelWorker = cancel
+		k.removeContainers(ctx, pod, down)
+		k.createContainers(ctx, pod, up)
+		k.podManager.UpdatePod(pod)
+	}
 }
 
 func (k *kubelet) handlePodDelete(pod *core.Pod) {
-	// FIXME: update field in pod
-
-	// FIXME: send new pod status back to apiserver
+	k.lock.Lock()
+	defer k.lock.Unlock()
+	old, _ := k.podManager.GetPodByUID(pod.UID)
+	old.CancelWorker()
+	ctx := context.Background()
+	k.removeContainers(ctx, old, old.Spec.Containers)
+	k.removeMasterContainer(ctx, pod)
 
 	// delete pod in podManager
-	k.podManager.DeletePod(pod)
+	k.podManager.DeletePod(old)
 }
 
 /*----------------------------  ----------------------------*/
+
+func containersNew(old []core.Container, new []core.Container) []core.Container {
+	set := make(map[string]core.Container)
+	for _, c := range new {
+		set[c.Name] = c
+	}
+
+	for _, c := range old {
+		delete(set, c.Name)
+	}
+
+	ret := make([]core.Container, 0)
+	for _, c := range set {
+		ret = append(ret, c)
+	}
+
+	return ret
+}
+
+func createPodContainerName(pod *core.Pod, container core.Container) string {
+	return pod.UID + "-" + container.Name
+}
+
+func (k *kubelet) createMasterContainer(ctx context.Context, pod *core.Pod) {
+	container := constants.InitialPauseContainer
+	container.Name = createPodContainerName(pod, container)
+	_, err := k.criClient.ContainerCreate(ctx, container)
+	if err != nil {
+		log.Fatalf("create failed")
+	}
+
+	if err := k.criClient.ContainerStart(ctx, container.Name); err != nil {
+		log.Fatalf("run failed")
+	}
+}
+
+func (k *kubelet) createContainers(ctx context.Context, pod *core.Pod, containers []core.Container) {
+	for _, container := range containers {
+		name := container.Name
+		container.Name = createPodContainerName(pod, container)
+		container.Master = k.criClient.ContainerId(ctx, createPodContainerName(pod, constants.InitialPauseContainer))
+		if container.Master == "" {
+			log.Fatalf("MissingMaster")
+		}
+		id, err := k.criClient.ContainerCreate(ctx, container)
+		if err != nil {
+			log.Fatalf("create failed")
+		}
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, core.ContainerStatus{
+			Name: name,
+			State: core.ContainerState{
+				Waiting:    nil,
+				Running:    &core.ContainerStateRunning{},
+				Terminated: nil,
+			},
+			Image:       container.Image,
+			ImageID:     container.Image,
+			ContainerID: id,
+		})
+		if err := k.criClient.ContainerStart(ctx, container.Name); err != nil {
+			log.Fatalf("run failed")
+		}
+	}
+}
+
+func (k *kubelet) removeContainers(ctx context.Context, pod *core.Pod, containers []core.Container) {
+	for _, container := range containers {
+		container.Name = createPodContainerName(pod, container)
+		container.Master = createPodContainerName(pod, constants.InitialPauseContainer)
+		err := k.criClient.ContainerRemove(ctx, container.Name)
+		if err != nil {
+			log.Println("[ERROR]: failed to remove container", container.Name, err.Error())
+		}
+	}
+}
+
+func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
+	err := k.criClient.ContainerRemove(
+		ctx,
+		createPodContainerName(pod, constants.InitialPauseContainer),
+	)
+
+	if err != nil {
+		log.Println("[ERROR]: failed to remove pod master container ", pod.Name, err.Error())
+	}
+}
+
+func (k *kubelet) startWatchContainers(ctx context.Context, pod *core.Pod, containers []core.Container) {
+	log.Println("start watch {}", pod.UID)
+	stopped := make(map[string]bool)
+	for _, c := range containers {
+		stopped[c.Name] = false
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("stop watch {} ", pod.UID)
+			return
+		default:
+			k.lock.Lock()
+			changed := false
+			for _, c := range containers {
+				if !stopped[c.Name] {
+					r, err := k.criClient.ContainerInspect(ctx, createPodContainerName(pod, c))
+					if err != nil {
+						log.Println(err.Error())
+						stopped[c.Name] = true
+						changed = true
+					}
+					if !r {
+						stopped[c.Name] = true
+						changed = true
+					}
+				}
+			}
+			if changed {
+				for idx, c := range pod.Status.ContainerStatuses {
+					if stopped[c.Name] {
+						pod.Status.ContainerStatuses[idx].State = core.ContainerState{Terminated: &core.ContainerStateTerminated{
+							ExitCode:    0,
+							Signal:      0,
+							Reason:      "",
+							Message:     "",
+							ContainerID: c.ContainerID,
+						}}
+					}
+				}
+				obj, err := k.podClient.Get(pod.UID)
+				tp := obj.(*core.Pod)
+				pod.ObjectMeta = tp.ObjectMeta
+				_, _, err = k.podClient.PutStatus(pod.UID, pod)
+				if err != nil {
+					log.Println(err.Error())
+				}
+			}
+			k.lock.Unlock()
+			time.Sleep(time.Second)
+		}
+	}
+
+}
