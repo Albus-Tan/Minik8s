@@ -148,7 +148,7 @@ func (k *kubelet) handlePodCreate(pod *core.Pod) {
 	go k.startWatchContainers(ctx, pod, pod.Spec.Containers)
 	pod.CancelWorker = cancel
 	pod.Status.Phase = core.PodRunning
-	_, _, err := k.podClient.PutStatus(pod.UID, pod)
+	_, _, err := k.podClient.Put(pod.UID, pod)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -167,6 +167,7 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 	up := containersNew(old.Spec.Containers, pod.Spec.Containers)
 	down := containersNew(pod.Spec.Containers, old.Spec.Containers)
 	if len(up) == 0 && len(down) == 0 {
+		pod.CancelWorker = old.CancelWorker
 		k.podManager.UpdatePod(pod)
 	} else {
 		old.CancelWorker()
@@ -323,7 +324,7 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod *core.Pod, conta
 				obj, err := k.podClient.Get(pod.UID)
 				tp := obj.(*core.Pod)
 				pod.ObjectMeta = tp.ObjectMeta
-				_, _, err = k.podClient.PutStatus(pod.UID, pod)
+				_, _, err = k.podClient.Put(pod.UID, pod)
 				if err != nil {
 					log.Println(err.Error())
 				}
