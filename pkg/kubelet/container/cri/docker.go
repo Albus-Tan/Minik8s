@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"io"
 	"log"
 	"minik8s/pkg/api/core"
 )
@@ -86,7 +87,7 @@ func (c *dockerClient) containerSlaverCreate(ctx context.Context, cnt core.Conta
 		return "", err
 	}
 	resp, err := c.Client.ContainerCreate(ctx, buildSlaverContainerConfig(cnt.Master, cnt), buildSlaverHostConfig(cnt.Master, cnt), nil, nil, cnt.Name)
-	if err == nil {
+	if err != nil {
 		return "", err
 	}
 	return resp.ID, nil
@@ -220,7 +221,11 @@ func (c *dockerClient) handleImagePull(ctx context.Context, cnt core.Container) 
 		//FIXME: check if present
 		fallthrough
 	case core.PullAlways:
-		_, err := c.Client.ImagePull(ctx, cnt.Image, types.ImagePullOptions{})
+		out, err := c.Client.ImagePull(ctx, cnt.Image, types.ImagePullOptions{})
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(io.Discard, out)
 		return err
 	case core.PullNever:
 		return nil
