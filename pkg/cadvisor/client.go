@@ -3,7 +3,6 @@ package cadvisor
 import (
 	"github.com/google/cadvisor/client"
 	clientv2 "github.com/google/cadvisor/client/v2"
-	"github.com/google/cadvisor/events"
 	info "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"log"
@@ -52,14 +51,6 @@ func NewClient(url string) Interface {
 
 func (c *Client) Start() error {
 
-	//einfo, err := c.staticClient.EventStaticInfo("?oom_events=true")
-	//if err != nil {
-	//	log.Errorf("got error retrieving event info: %v", err)
-	//	return
-	//}
-	//for idx, ev := range einfo {
-	//	log.Infof("static einfo %v: %v", idx, ev)
-	//}
 	return nil
 }
 
@@ -75,11 +66,6 @@ func (c *Client) ContainerInfo(name string, req *info.ContainerInfoRequest) (*in
 
 func (c *Client) ContainerInfoV2(name string, options cadvisorapiv2.RequestOptions) (map[string]cadvisorapiv2.ContainerInfo, error) {
 	return c.v2StaticClient.Stats(name, &options)
-}
-
-func (c *Client) GetRequestedContainersInfo(containerName string, options cadvisorapiv2.RequestOptions) (map[string]*info.ContainerInfo, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (c *Client) SubcontainerInfo(name string, req *info.ContainerInfoRequest) (map[string]*info.ContainerInfo, error) {
@@ -118,21 +104,6 @@ func (c *Client) VersionInfo() (*info.VersionInfo, error) {
 	}, nil
 }
 
-func (c *Client) ImagesFsInfo() (cadvisorapiv2.FsInfo, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (c *Client) RootFsInfo() (cadvisorapiv2.FsInfo, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (c *Client) WatchEvents(request *events.Request) (*events.EventChannel, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (c *Client) WatchAllEvents(containerName string, includeSubcontainers bool) (chan *info.Event, error) {
 
 	// params := "?creation_events=true&stream=true&oom_events=true&deletion_events=true"
@@ -158,6 +129,10 @@ func (c *Client) WatchAllEvents(containerName string, includeSubcontainers bool)
 	return einfo, nil
 }
 
+func (c *Client) AllDockerContainers(query *info.ContainerInfoRequest) (cinfo []info.ContainerInfo, err error) {
+	return c.staticClient.AllDockerContainers(query)
+}
+
 //func (c *Client) startStreamingClient(url string) {
 //	einfo := make(chan *info.Event)
 //	go func() {
@@ -171,8 +146,3 @@ func (c *Client) WatchAllEvents(containerName string, includeSubcontainers bool)
 //		log.Printf("[cadvisor] streaming einfo: %v\n", ev)
 //	}
 //}
-
-func (c *Client) GetDirFsInfo(path string) (cadvisorapiv2.FsInfo, error) {
-	//TODO implement me
-	panic("implement me")
-}

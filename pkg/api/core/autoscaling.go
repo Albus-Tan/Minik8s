@@ -240,10 +240,10 @@ type MetricTarget struct {
 	// Type represents whether the metric type is Utilization, Value, or AverageValue
 	Type MetricTargetType `json:"type"`
 	// Value is the target value of the metric (as a quantity).
-	Value Quantity `json:"value,omitempty"`
+	Value types.Quantity `json:"value,omitempty"`
 	// TargetAverageValue is the target value of the average of the
 	// metric across all relevant pods (as a quantity)
-	AverageValue Quantity `json:"averageValue,omitempty"`
+	AverageValue types.Quantity `json:"averageValue,omitempty"`
 
 	// AverageUtilization is the target value of the average of the
 	// resource metric across all relevant pods, represented as a percentage of
@@ -251,9 +251,6 @@ type MetricTarget struct {
 	// Currently only valid for Resource metric source type
 	AverageUtilization int32 `json:"averageUtilization,omitempty"`
 }
-
-// Quantity such as "1500m" or "1536Mi"
-type Quantity string
 
 // MetricTargetType specifies the type of metric being targeted, and should be either
 // "Value", "AverageValue", or "Utilization"

@@ -7,7 +7,7 @@ import (
 )
 
 func TestClient(t *testing.T) {
-	cadvisorClient := NewClient(config.CadvisorUrl())
+	cadvisorClient := NewClient(config.CadvisorUrl(config.CadvisorHost))
 	err := cadvisorClient.Start()
 	if err != nil {
 		log.Printf("[Test cadvisor] Start cadvisor error: %v\n", err)

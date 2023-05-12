@@ -11,7 +11,7 @@ import (
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/apiclient/listwatch"
-	cadvisor2 "minik8s/pkg/cadvisor"
+	"minik8s/pkg/cadvisor"
 	"minik8s/pkg/kubelet/container"
 	"minik8s/pkg/kubelet/pod"
 )
@@ -31,7 +31,7 @@ func New(node *core.Node) Kubelet {
 		podListerWatcher: podListerWatcher,
 		podManager:       pod.NewPodManager(),
 		criClient:        container.NewCriClient(),
-		cadvisorClient:   cadvisor2.NewClient(config.CadvisorUrl(config.CadvisorHost)),
+		cadvisorClient:   cadvisor.NewClient(config.CadvisorUrl(config.CadvisorHost)),
 		node:             node,
 	}
 }
@@ -44,7 +44,7 @@ type kubelet struct {
 	podManager       pod.Manager
 	criClient        container.CriClient
 
-	cadvisorClient cadvisor2.Interface
+	cadvisorClient cadvisor.Interface
 }
 
 func (k *kubelet) Run() {

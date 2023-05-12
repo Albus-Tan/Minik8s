@@ -1,23 +1,34 @@
 package metrics
 
-import "fmt"
+import (
+	"fmt"
+	"minik8s/pkg/api/types"
+)
 
 // GetResourceUtilizationRatio takes in a set of metrics, a set of matching requests,
 // and a target utilization percentage, and calculates the ratio of
 // desired to actual utilization (returning that, the actual utilization, and the raw average value)
-func GetResourceUtilizationRatio(metrics PodMetricsInfo, requests map[string]int64, targetUtilization int32) (utilizationRatio float64, currentUtilization int32, rawAverageValue int64, err error) {
-	metricsTotal := int64(0)
-	requestsTotal := int64(0)
+func GetResourceUtilizationRatio(name types.ResourceName, metrics PodMetricsInfo, requests map[types.UID]uint64, targetUtilization int32) (utilizationRatio float64, currentUtilization int32, rawAverageValue uint64, err error) {
+	metricsTotal := uint64(0)
+	requestsTotal := uint64(0)
 	numEntries := 0
 
-	for podName, metric := range metrics {
-		request, hasRequest := requests[podName]
+	for podUID, metric := range metrics {
+		request, hasRequest := requests[podUID]
 		if !hasRequest {
 			// we check for missing requests elsewhere, so assuming missing requests == extraneous metrics
 			continue
 		}
 
-		metricsTotal += metric.Value
+		switch name {
+		case types.ResourceMemory:
+			metricsTotal += metric.MemUsage
+		case types.ResourceCPU:
+			metricsTotal += metric.CpuUsage
+		default:
+			continue
+		}
+
 		requestsTotal += request
 		numEntries++
 	}
@@ -30,19 +41,25 @@ func GetResourceUtilizationRatio(metrics PodMetricsInfo, requests map[string]int
 
 	currentUtilization = int32((metricsTotal * 100) / requestsTotal)
 
-	return float64(currentUtilization) / float64(targetUtilization), currentUtilization, metricsTotal / int64(numEntries), nil
+	return float64(currentUtilization) / float64(targetUtilization), currentUtilization, metricsTotal / uint64(numEntries), nil
 }
 
 // GetMetricUsageRatio takes in a set of metrics and a target usage value,
 // and calculates the ratio of desired to actual usage
 // (returning that and the actual usage)
-func GetMetricUsageRatio(metrics PodMetricsInfo, targetUsage int64) (usageRatio float64, currentUsage int64) {
-	metricsTotal := int64(0)
+func GetMetricUsageRatio(name types.ResourceName, metrics PodMetricsInfo, targetUsage uint64) (usageRatio float64, currentUsage uint64) {
+	metricsTotal := uint64(0)
 	for _, metric := range metrics {
-		metricsTotal += metric.Value
+		switch name {
+		case types.ResourceCPU:
+			metricsTotal += metric.CpuUsage
+		case types.ResourceMemory:
+			metricsTotal += metric.MemUsage
+		default:
+			continue
+		}
 	}
-
-	currentUsage = metricsTotal / int64(len(metrics))
+	currentUsage = metricsTotal / uint64(len(metrics))
 
 	return float64(currentUsage) / float64(targetUsage), currentUsage
 }

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/controller/cache"
+	"minik8s/pkg/controller/podautoscaler/metrics"
 	"minik8s/pkg/logger"
 	"time"
 )
@@ -23,14 +25,15 @@ type HorizontalController interface {
 func NewHorizontalController(podInformer cache.Informer, podClient client.Interface, hpaInformer cache.Informer, hpaClient client.Interface, rsInformer cache.Informer, rsClient client.Interface) HorizontalController {
 
 	hc := &horizontalController{
-		podClient:   podClient,
-		hpaClient:   hpaClient,
-		rsClient:    rsClient,
-		podInformer: podInformer,
-		hpaInformer: hpaInformer,
-		rsInformer:  rsInformer,
-		queue:       cache.NewWorkQueue(),
-		Kind:        string(types.HorizontalPodAutoscalerObjectType),
+		podClient:     podClient,
+		hpaClient:     hpaClient,
+		rsClient:      rsClient,
+		podInformer:   podInformer,
+		hpaInformer:   hpaInformer,
+		rsInformer:    rsInformer,
+		queue:         cache.NewWorkQueue(),
+		Kind:          string(types.HorizontalPodAutoscalerObjectType),
+		metricsClient: metrics.NewResourceMetricsClient(),
 	}
 
 	_ = hc.hpaInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -43,6 +46,8 @@ func NewHorizontalController(podInformer cache.Informer, podClient client.Interf
 }
 
 type horizontalController struct {
+	metricsClient metrics.MetricsClient
+
 	hpaInformer cache.Informer
 	hpaClient   client.Interface
 
@@ -252,11 +257,44 @@ func (h *horizontalController) getRSOwned(hpa *core.HorizontalPodAutoscaler) (rs
 }
 
 func (h *horizontalController) calculateDesiredReplicasByMertics(hpa *core.HorizontalPodAutoscaler, rs *core.ReplicaSet) (rsSpecReplicas int32, doRescale bool, rescaleReason string, err error) {
-	metrics := hpa.Spec.Metrics
+
+	metricSpecs := hpa.Spec.Metrics
 	doRescale = false
 	rsSpecReplicas = rs.Spec.Replicas
 	err = nil
-	for _, metric := range metrics {
+
+	currentContainerMetrics, err := h.metricsClient.CollectAllMetrics()
+	ownedPods := h.getRSOwnedPods(rs)
+	podMetrics := metrics.RearrangeContainerMetricsByPods(currentContainerMetrics, ownedPods)
+
+	cpuRequests := make(map[string]uint64, len(ownedPods))
+	memRequests := make(map[string]uint64, len(ownedPods))
+	for _, ownedPod := range ownedPods {
+		containers := rs.Spec.Template.Spec.Containers
+		for _, c := range containers {
+			for name, q := range c.Resources.Requests {
+				quantity, err := types.ParseQuantity(name, q)
+				if err != nil {
+					return rs.Spec.Replicas, false, "", err
+				}
+				switch name {
+				case types.ResourceCPU:
+					cpuRequests[ownedPod.GetUID()] = quantity
+				case types.ResourceMemory:
+					memRequests[ownedPod.GetUID()] = quantity
+				default:
+					continue
+				}
+			}
+		}
+	}
+
+	if err != nil {
+		logger.HorizontalControllerLogger.Printf("[metricsClient] CollectAllMetrics error: %v\n", err)
+		return rs.Spec.Replicas, false, "", errors.New(fmt.Sprintf("[calculateDesiredReplicasByMertics] CollectAllMetrics error: %v", err))
+	}
+
+	for _, metric := range metricSpecs {
 		switch metric.Type {
 		case core.ResourceMetricSourceType:
 			if metric.Resource == nil {
@@ -265,19 +303,55 @@ func (h *horizontalController) calculateDesiredReplicasByMertics(hpa *core.Horiz
 			switch metric.Resource.Target.Type {
 			case core.UtilizationMetricType:
 				switch metric.Resource.Name {
+
 				case types.ResourceCPU:
+					utilizationRatio, currentUtilization, rawAverageValue, err := metrics.GetResourceUtilizationRatio(metric.Resource.Name, podMetrics, cpuRequests, metric.Resource.Target.AverageUtilization)
+					logger.HorizontalControllerLogger.Printf("[UtilizationMetricType] GetResourceUtilizationRatio Cpu utilizationRatio %v, currentUtilization: %v, rawAverageValue: %v\n", utilizationRatio, currentUtilization, rawAverageValue)
+					if err != nil {
+						return rs.Spec.Replicas, false, "", err
+					}
+
+					expectedReplicas := int32(math.Ceil(float64(rs.Spec.Replicas) * utilizationRatio))
+					if expectedReplicas != rsSpecReplicas {
+						rescaleReason = fmt.Sprintf("ResourceCPU Utilization: rsSpecReplicas %v, expectedReplicas %v; utilizationRatio %v, currentUtilization %v", rsSpecReplicas, expectedReplicas, utilizationRatio, currentUtilization)
+						rsSpecReplicas = expectedReplicas
+						doRescale = true
+					}
 
 				case types.ResourceMemory:
+					utilizationRatio, currentUtilization, rawAverageValue, err := metrics.GetResourceUtilizationRatio(metric.Resource.Name, podMetrics, memRequests, metric.Resource.Target.AverageUtilization)
+					logger.HorizontalControllerLogger.Printf("[UtilizationMetricType] GetResourceUtilizationRatio Mem utilizationRatio %v, currentUtilization: %v, rawAverageValue: %v\n", utilizationRatio, currentUtilization, rawAverageValue)
+					if err != nil {
+						return rs.Spec.Replicas, false, "", err
+					}
+
+					expectedReplicas := int32(math.Ceil(float64(rs.Spec.Replicas) * utilizationRatio))
+					if expectedReplicas != rsSpecReplicas {
+						rescaleReason = fmt.Sprintf("ResourceMem Utilization: rsSpecReplicas %v, expectedReplicas %v; utilizationRatio %v, currentUtilization %v", rsSpecReplicas, expectedReplicas, utilizationRatio, currentUtilization)
+						rsSpecReplicas = expectedReplicas
+						doRescale = true
+					}
 
 				default:
 					logger.HorizontalControllerLogger.Printf("[calculateDesiredReplicasByMertics] resource name type %v not supported\n", metric.Resource.Name)
 				}
 			case core.AverageValueMetricType:
 				switch metric.Resource.Name {
-				case types.ResourceCPU:
+				case types.ResourceCPU, types.ResourceMemory:
+					avgVal, err := types.ParseQuantity(metric.Resource.Name, metric.Resource.Target.AverageValue)
+					if err != nil {
+						return rs.Spec.Replicas, false, "", err
+					}
 
-				case types.ResourceMemory:
+					usageRatio, currentUsage := metrics.GetMetricUsageRatio(metric.Resource.Name, podMetrics, avgVal)
+					logger.HorizontalControllerLogger.Printf("[UtilizationMetricType] GetMetricUsageRatio %v, usageRatio %v, currentUsage: %v\n", metric.Resource.Name, usageRatio, currentUsage)
 
+					expectedReplicas := int32(math.Ceil(float64(rs.Spec.Replicas) * usageRatio))
+					if expectedReplicas != rsSpecReplicas {
+						rescaleReason = fmt.Sprintf("Resource %v AverageValue: rsSpecReplicas %v, expectedReplicas %v; usageRatio %v, currentUsage %v", metric.Resource.Name, rsSpecReplicas, expectedReplicas, usageRatio, currentUsage)
+						rsSpecReplicas = expectedReplicas
+						doRescale = true
+					}
 				default:
 					logger.HorizontalControllerLogger.Printf("[calculateDesiredReplicasByMertics] resource name type %v not supported\n", metric.Resource.Name)
 				}
@@ -292,9 +366,10 @@ func (h *horizontalController) calculateDesiredReplicasByMertics(hpa *core.Horiz
 	return rsSpecReplicas, doRescale, rescaleReason, err
 }
 
+const defaultRescaleTimeInterval = time.Duration(5) * time.Second
+
 func (h *horizontalController) rescaleTimeOut(hpa *core.HorizontalPodAutoscaler) bool {
-	// TODO
-	return true
+	return time.Since(hpa.Status.LastScaleTime) > defaultRescaleTimeInterval
 }
 
 func (h *horizontalController) updatePreOwnedRss(hpa *core.HorizontalPodAutoscaler, preOwned []core.ReplicaSet) {
@@ -326,4 +401,18 @@ func (h *horizontalController) getScaleTargetRefRS(hpa *core.HorizontalPodAutosc
 	}
 
 	return nil, false
+}
+
+func (h *horizontalController) getRSOwnedPods(rs *core.ReplicaSet) []core.Pod {
+	rsUID := rs.GetUID()
+	relatedPods := make([]core.Pod, 0)
+	pods := h.podInformer.List()
+	for _, item := range pods {
+		pod := item.(*core.Pod)
+		if isOwner, owner := meta.CheckOwner(rsUID, pod.OwnerReferences); isOwner && meta.CheckOwnerKind(types.ReplicasetObjectType, owner) {
+			relatedPods = append(relatedPods, *pod)
+		}
+	}
+
+	return relatedPods
 }
