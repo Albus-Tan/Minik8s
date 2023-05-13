@@ -2,16 +2,16 @@
   "apiVersion": "autoscaling/v2beta2",
   "kind": "HorizontalPodAutoscaler",
   "metadata": {
-    "name": "hpa-practice"
+    "name": "hpa-practice-mem"
   },
   "spec": {
     "minReplicas": 3,
-    "maxReplicas": 6,
+    "maxReplicas": 9,
     "metrics": [
       {
         "type": "Resource",
         "resource": {
-          "name": "cpu",
+          "name": "memory",
           "target": {
             "type": "Utilization",
             "averageUtilization": 20
@@ -22,7 +22,7 @@
     "scaleTargetRef": {
       "apiVersion": "apps/v1",
       "kind": "ReplicaSet",
-      "name": "myapp-replicas"
+      "name": "myapp-replicas-memory"
     },
     "behavior": {
       "scaleDown": {

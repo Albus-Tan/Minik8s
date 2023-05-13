@@ -357,6 +357,7 @@ func (h *horizontalController) calculateDesiredReplicasByMertics(hpa *core.Horiz
 						rescaleReason = fmt.Sprintf("ResourceCPU Utilization: rsSpecReplicas %v, expectedReplicas %v; utilizationRatio %v, currentUtilization %v", rsSpecReplicas, expectedReplicas, utilizationRatio, currentUtilization)
 						rsSpecReplicas = expectedReplicas
 						doRescale = true
+						return rsSpecReplicas, doRescale, rescaleReason, err
 					}
 
 				case types.ResourceMemory:
@@ -371,6 +372,7 @@ func (h *horizontalController) calculateDesiredReplicasByMertics(hpa *core.Horiz
 						rescaleReason = fmt.Sprintf("ResourceMem Utilization: rsSpecReplicas %v, expectedReplicas %v; utilizationRatio %v, currentUtilization %v", rsSpecReplicas, expectedReplicas, utilizationRatio, currentUtilization)
 						rsSpecReplicas = expectedReplicas
 						doRescale = true
+						return rsSpecReplicas, doRescale, rescaleReason, err
 					}
 
 				default:
@@ -392,6 +394,7 @@ func (h *horizontalController) calculateDesiredReplicasByMertics(hpa *core.Horiz
 						rescaleReason = fmt.Sprintf("Resource %v AverageValue: rsSpecReplicas %v, expectedReplicas %v; usageRatio %v, currentUsage %v", metric.Resource.Name, rsSpecReplicas, expectedReplicas, usageRatio, currentUsage)
 						rsSpecReplicas = expectedReplicas
 						doRescale = true
+						return rsSpecReplicas, doRescale, rescaleReason, err
 					}
 				default:
 					logger.HorizontalControllerLogger.Printf("[calculateDesiredReplicasByMertics] resource name type %v not supported\n", metric.Resource.Name)

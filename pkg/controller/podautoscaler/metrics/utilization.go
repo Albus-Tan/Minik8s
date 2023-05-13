@@ -23,7 +23,7 @@ func GetResourceUtilizationRatio(name types.ResourceName, metrics PodMetricsInfo
 
 		switch name {
 		case types.ResourceMemory:
-			metricsTotal += metric.MemUsage
+			metricsTotal += metric.MemUsage / (1024 * 1024)
 		case types.ResourceCPU:
 			metricsTotal += metric.CpuUsage / 1000000
 		default:
@@ -57,7 +57,7 @@ func GetMetricUsageRatio(name types.ResourceName, metrics PodMetricsInfo, target
 		case types.ResourceCPU:
 			metricsTotal += metric.CpuUsage / 1000000
 		case types.ResourceMemory:
-			metricsTotal += metric.MemUsage
+			metricsTotal += metric.MemUsage / (1024 * 1024)
 		default:
 			continue
 		}
