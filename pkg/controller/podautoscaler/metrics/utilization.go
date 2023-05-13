@@ -40,7 +40,7 @@ func GetResourceUtilizationRatio(name types.ResourceName, metrics PodMetricsInfo
 		return 0, 0, 0, fmt.Errorf("no metrics returned matched known pods")
 	}
 
-	currentUtilization = int32((metricsTotal) / requestsTotal)
+	currentUtilization = int32((metricsTotal) * 100 / requestsTotal)
 
 	logger.ControllerManagerLogger.Printf("[Metrics GetResourceUtilizationRatio] numEntries %v, requestsTotal %v, metricsTotal%v, currentUtilization %v\n", numEntries, requestsTotal, metricsTotal, currentUtilization)
 
