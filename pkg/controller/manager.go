@@ -82,4 +82,6 @@ func (m *manager) Run() {
 	m.replicaSetController.Run(ctx)
 	m.horizontalController.Run(ctx)
 
+	// loop until cancel
+	<-ctx.Done()
 }

@@ -46,10 +46,12 @@ func NewResourceMetricsClient() MetricsClient {
 
 	nodeList, err := lw.List()
 	if err != nil {
-		logger.ControllerManagerLogger.Printf("[MetricsClient] list nodes filed when creating, err: %v\n", err)
+		logger.ControllerManagerLogger.Printf("[MetricsClient] list nodes failed when creating, err: %v\n", err)
 	} else {
 		nodes := nodeList.GetIApiObjectArr()
 		cadvisorClients = make(map[types.UID]cadvisor.Interface, len(nodes))
+
+		rmc.timeLastSynced = time.Now()
 
 		logger.ControllerManagerLogger.Printf("[MetricsClient] New, list nodes length: %v\n", len(nodes))
 
@@ -63,7 +65,7 @@ func NewResourceMetricsClient() MetricsClient {
 	return rmc
 }
 
-const defaultSyncInterval = 3 * time.Minute
+const defaultSyncInterval = 30 * time.Second
 
 func (r *resourceMetricsClient) syncNodeInfo() {
 	r.mtx.Lock()
@@ -76,17 +78,24 @@ func (r *resourceMetricsClient) syncNodeInfo() {
 	r.timeLastSynced = time.Now()
 
 	nodeList, err := r.nodeListWatcher.List()
+
 	if err != nil {
 		logger.ControllerManagerLogger.Printf("[MetricsClient] list nodes filed when syncNodeInfo, err: %v\n", err)
 	} else {
 		nodes := nodeList.GetIApiObjectArr()
 
-		cadvisorClients := make(map[types.UID]cadvisor.Interface, len(nodes))
+		if len(nodes) == len(r.cadvisorClients) {
+			return
+		}
+
+		logger.ControllerManagerLogger.Printf("[MetricsClient] syncNodeInfo, current %v nodes\n", len(nodes))
+
+		r.cadvisorClients = make(map[types.UID]cadvisor.Interface, len(nodes))
 
 		for _, nodeItem := range nodes {
 			node := nodeItem.(*core.Node)
 			cli := cadvisor.NewClient(config.CadvisorUrl(node.Spec.Address))
-			cadvisorClients[node.GetUID()] = cli
+			r.cadvisorClients[node.GetUID()] = cli
 		}
 	}
 
@@ -115,11 +124,21 @@ func AverageStatsMetrics(stats []*info.ContainerStats) *PodMetric {
 			cnt += 1
 		}
 	}
-	return &PodMetric{
-		Timestamp: stats[0].Timestamp,
-		CpuUsage:  cpuUsg / cnt,
-		MemUsage:  memUsg / cnt,
+	if cnt == 0 {
+		logger.ControllerManagerLogger.Printf("[MetricsClient] Warning: AverageStatsMetrics, 0 item in ContainerStats\n")
+		return &PodMetric{
+			Timestamp: time.Now(),
+			CpuUsage:  0,
+			MemUsage:  0,
+		}
+	} else {
+		return &PodMetric{
+			Timestamp: stats[0].Timestamp,
+			CpuUsage:  cpuUsg / cnt,
+			MemUsage:  memUsg / cnt,
+		}
 	}
+
 }
 
 func RearrangeContainerMetricsByPods(containerMetrics map[string]info.ContainerInfo, pods []core.Pod) (podMetrics PodMetricsInfo) {
@@ -147,6 +166,9 @@ func RearrangeContainerMetricsByPods(containerMetrics map[string]info.ContainerI
 }
 
 func (r *resourceMetricsClient) CollectAllMetrics() (res map[string]info.ContainerInfo, err error) {
+
+	logger.ControllerManagerLogger.Printf("[MetricsClient] CollectAllMetrics start\n")
+
 	r.syncNodeInfo()
 	query := info.DefaultContainerInfoRequest()
 	res = make(map[string]info.ContainerInfo)
@@ -154,11 +176,15 @@ func (r *resourceMetricsClient) CollectAllMetrics() (res map[string]info.Contain
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
-	for _, cli := range r.cadvisorClients {
+	for uid, cli := range r.cadvisorClients {
 		containerInfos, err := cli.AllDockerContainers(&query)
 		if err != nil {
 			return res, err
 		}
+
+		logger.ControllerManagerLogger.Printf("[MetricsClient] AllDockerContainers info collected from node uid %v\n", uid)
+		logger.ControllerManagerLogger.Printf("[MetricsClient] AllDockerContainers info: %+v\n", containerInfos)
+
 		for _, containerInfo := range containerInfos {
 			res[ContainerKeyFunc(containerInfo.Name, containerInfo.Id)] = containerInfo
 		}
