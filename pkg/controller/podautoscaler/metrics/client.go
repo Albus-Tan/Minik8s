@@ -151,6 +151,8 @@ func RearrangeContainerMetricsByPods(containerMetrics map[string]info.ContainerI
 		}
 	}
 
+	podMetrics = make(PodMetricsInfo)
+
 	for key, podUID := range containerKeys {
 		containerInfo := containerMetrics[key]
 		pm := AverageStatsMetrics(containerInfo.Stats)
