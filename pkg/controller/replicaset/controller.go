@@ -57,14 +57,16 @@ type replicaSetController struct {
 
 func (rsc *replicaSetController) Run(ctx context.Context) {
 
-	// logger.ReplicaSetControllerLogger.SetPrefix()
-	logger.ReplicaSetControllerLogger.Printf("[ReplicaSetController] start\n")
+	go func() {
+		logger.ReplicaSetControllerLogger.Printf("[ReplicaSetController] start\n")
+		defer logger.ReplicaSetControllerLogger.Printf("[ReplicaSetController] finish\n")
 
-	rsc.runWorker(ctx)
+		rsc.runWorker(ctx)
 
-	// wait for controller manager stop
-	<-ctx.Done()
-
+		// wait for controller manager stop
+		<-ctx.Done()
+	}()
+	return
 }
 
 func (rsc *replicaSetController) RSKeyFunc(rs *core.ReplicaSet) string {

@@ -63,14 +63,18 @@ type horizontalController struct {
 
 func (h *horizontalController) Run(ctx context.Context) {
 
-	logger.HorizontalControllerLogger.Printf("[HorizontalController] start\n")
+	go func() {
+		logger.HorizontalControllerLogger.Printf("[HorizontalController] start\n")
+		defer logger.HorizontalControllerLogger.Printf("[HorizontalController] finish\n")
 
-	h.runWorker(ctx)
+		h.runWorker(ctx)
 
-	h.periodicallyCheckScale()
+		h.periodicallyCheckScale()
 
-	// wait for controller manager stop
-	<-ctx.Done()
+		// wait for controller manager stop
+		<-ctx.Done()
+	}()
+	return
 }
 
 func (h *horizontalController) HpaKeyFunc(hpa *core.HorizontalPodAutoscaler) string {
@@ -112,7 +116,7 @@ func (h *horizontalController) deleteHpa(obj interface{}) {
 	// leave corresponding rs alive instead of killing them
 }
 
-const scaleCheckInterval = time.Duration(15) * time.Second
+const scaleCheckInterval = 15 * time.Second
 
 func (h *horizontalController) periodicallyCheckScale() {
 	go h.periodicallyScaleAll()
@@ -122,6 +126,8 @@ func (h *horizontalController) periodicallyScaleAll() {
 	for {
 		time.Sleep(scaleCheckInterval)
 		hpas := h.hpaInformer.List()
+
+		logger.HorizontalControllerLogger.Printf("[periodicallyScaleAll] enqueue all Hpa start\n")
 
 		for _, item := range hpas {
 			hpa := item.(*core.HorizontalPodAutoscaler)
@@ -178,6 +184,8 @@ func (h *horizontalController) processNextWorkItem(ctx context.Context) bool {
 }
 
 func (h *horizontalController) reconcileAutoscaler(ctx context.Context, key string) error {
+
+	logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] start\n")
 
 	// Get the Hpa
 	hpaItem, exist := h.hpaInformer.Get(key)

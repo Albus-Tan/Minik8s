@@ -51,6 +51,8 @@ func NewResourceMetricsClient() MetricsClient {
 		nodes := nodeList.GetIApiObjectArr()
 		cadvisorClients = make(map[types.UID]cadvisor.Interface, len(nodes))
 
+		logger.ControllerManagerLogger.Printf("[MetricsClient] New, list nodes length: %v\n", len(nodes))
+
 		for _, nodeItem := range nodes {
 			node := nodeItem.(*core.Node)
 			cli := cadvisor.NewClient(config.CadvisorUrl(node.Spec.Address))
