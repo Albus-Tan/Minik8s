@@ -181,11 +181,12 @@ func (r *resourceMetricsClient) CollectAllMetrics() (res map[string]info.Contain
 	for uid, cli := range r.cadvisorClients {
 		containerInfos, err := cli.AllDockerContainers(&query)
 		if err != nil {
-			return res, err
+			logger.ControllerManagerLogger.Printf("[MetricsClient] AllDockerContainers info collected failed from node uid %v, err %v\n", uid, err)
+			continue
 		}
 
 		logger.ControllerManagerLogger.Printf("[MetricsClient] AllDockerContainers info collected from node uid %v\n", uid)
-		logger.ControllerManagerLogger.Printf("[MetricsClient] AllDockerContainers info: %+v\n", containerInfos)
+		// logger.ControllerManagerLogger.Printf("[MetricsClient] AllDockerContainers info: %+v\n", containerInfos)
 
 		for _, containerInfo := range containerInfos {
 			res[ContainerKeyFunc(containerInfo.Id)] = containerInfo

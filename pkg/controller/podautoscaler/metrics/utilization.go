@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 	"minik8s/pkg/api/types"
+	"minik8s/pkg/logger"
 )
 
 // GetResourceUtilizationRatio takes in a set of metrics, a set of matching requests,
@@ -24,7 +25,7 @@ func GetResourceUtilizationRatio(name types.ResourceName, metrics PodMetricsInfo
 		case types.ResourceMemory:
 			metricsTotal += metric.MemUsage
 		case types.ResourceCPU:
-			metricsTotal += metric.CpuUsage
+			metricsTotal += metric.CpuUsage / 1000000
 		default:
 			continue
 		}
@@ -39,7 +40,9 @@ func GetResourceUtilizationRatio(name types.ResourceName, metrics PodMetricsInfo
 		return 0, 0, 0, fmt.Errorf("no metrics returned matched known pods")
 	}
 
-	currentUtilization = int32((metricsTotal * 100) / requestsTotal)
+	currentUtilization = int32((metricsTotal) / requestsTotal)
+
+	logger.ControllerManagerLogger.Printf("[Metrics GetResourceUtilizationRatio] numEntries %v, requestsTotal %v, metricsTotal%v, currentUtilization %v\n", numEntries, requestsTotal, metricsTotal, currentUtilization)
 
 	return float64(currentUtilization) / float64(targetUtilization), currentUtilization, metricsTotal / uint64(numEntries), nil
 }
@@ -52,7 +55,7 @@ func GetMetricUsageRatio(name types.ResourceName, metrics PodMetricsInfo, target
 	for _, metric := range metrics {
 		switch name {
 		case types.ResourceCPU:
-			metricsTotal += metric.CpuUsage
+			metricsTotal += metric.CpuUsage / 1000000
 		case types.ResourceMemory:
 			metricsTotal += metric.MemUsage
 		default:

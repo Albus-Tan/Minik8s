@@ -228,6 +228,12 @@ func (h *horizontalController) reconcileAutoscaler(ctx context.Context, key stri
 			if err != nil {
 				return err
 			}
+
+			if rs.Spec.Replicas > hpa.Spec.MaxReplicas {
+				rs.Spec.Replicas = hpa.Spec.MaxReplicas
+			} else if currentReplicas < hpa.Spec.MinReplicas {
+				rs.Spec.Replicas = hpa.Spec.MinReplicas
+			}
 		}
 
 		if rescale && h.rescaleTimeOut(hpa) {
@@ -235,6 +241,9 @@ func (h *horizontalController) reconcileAutoscaler(ctx context.Context, key stri
 			hpa.Status.LastScaleTime = time.Now()
 			hpa.Status.CurrentReplicas = currentReplicas
 			hpa.Status.DesiredReplicas = rs.Spec.Replicas
+
+			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] rescale start for reason: %v\n", rescaleReason)
+			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] new status of hpa: CurrentReplicas %v, DesiredReplicas %v\n", hpa.Status.CurrentReplicas, hpa.Status.DesiredReplicas)
 
 			// update hpa
 			_, _, err := h.hpaClient.Put(hpa.UID, hpa)
@@ -249,6 +258,8 @@ func (h *horizontalController) reconcileAutoscaler(ctx context.Context, key stri
 			}
 
 			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] rescale finished for reason: %v\n", rescaleReason)
+		} else {
+			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] No rescale this time: %v\n", rescaleReason)
 		}
 
 	default:
