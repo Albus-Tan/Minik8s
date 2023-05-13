@@ -101,8 +101,8 @@ func (r *resourceMetricsClient) syncNodeInfo() {
 
 }
 
-func ContainerKeyFunc(name, id string) string {
-	return name + "-" + id
+func ContainerKeyFunc(id string) string {
+	return id
 }
 
 func AddPodMetric(a *PodMetric, b *PodMetric) PodMetric {
@@ -146,7 +146,7 @@ func RearrangeContainerMetricsByPods(containerMetrics map[string]info.ContainerI
 	containerKeys := make(map[string]types.UID)
 	for _, pod := range pods {
 		for _, container := range pod.Status.ContainerStatuses {
-			key := ContainerKeyFunc(container.Name, container.ContainerID)
+			key := ContainerKeyFunc(container.ContainerID)
 			containerKeys[key] = pod.UID
 		}
 	}
@@ -186,7 +186,7 @@ func (r *resourceMetricsClient) CollectAllMetrics() (res map[string]info.Contain
 		logger.ControllerManagerLogger.Printf("[MetricsClient] AllDockerContainers info: %+v\n", containerInfos)
 
 		for _, containerInfo := range containerInfos {
-			res[ContainerKeyFunc(containerInfo.Name, containerInfo.Id)] = containerInfo
+			res[ContainerKeyFunc(containerInfo.Id)] = containerInfo
 		}
 	}
 	return res, nil
