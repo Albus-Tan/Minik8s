@@ -2,6 +2,10 @@ package api
 
 const StatusSuffix = "/status"
 
+// Clear all
+
+const ClearAllURL = "/clear"
+
 // ------------------ REST API ---------------------
 // Pod
 const (

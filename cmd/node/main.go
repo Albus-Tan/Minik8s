@@ -8,6 +8,7 @@ import (
 
 func main() {
 	n := node.CreateWorkerNode()
+	defer node.DeleteNode(n)
 	k, err := kubelet.New(n)
 	defer k.Close()
 	if err != nil {

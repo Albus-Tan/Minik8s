@@ -32,6 +32,15 @@ func CreateMasterNode() *core.Node {
 	return nc.nodeInfo
 }
 
+func DeleteNode(n *core.Node) {
+	nodeCli, _ := apiclient.NewRESTClient(types.NodeObjectType)
+	_, _, err := nodeCli.Delete(n.UID)
+	if err != nil {
+		panic(err)
+		return
+	}
+}
+
 type NodeCreator struct {
 	ty         config.NodeType
 	nodeClient client.Interface

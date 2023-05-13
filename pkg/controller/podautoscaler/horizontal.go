@@ -67,6 +67,8 @@ func (h *horizontalController) Run(ctx context.Context) {
 
 	h.runWorker(ctx)
 
+	h.periodicallyCheckScale()
+
 	// wait for controller manager stop
 	<-ctx.Done()
 }
@@ -108,6 +110,26 @@ func (h *horizontalController) deleteHpa(obj interface{}) {
 	h.updatePreOwnedRss(hpa, rssOwned)
 
 	// leave corresponding rs alive instead of killing them
+}
+
+const scaleCheckInterval = time.Duration(15) * time.Second
+
+func (h *horizontalController) periodicallyCheckScale() {
+	go h.periodicallyScaleAll()
+}
+
+func (h *horizontalController) periodicallyScaleAll() {
+	for {
+		time.Sleep(scaleCheckInterval)
+		hpas := h.hpaInformer.List()
+
+		for _, item := range hpas {
+			hpa := item.(*core.HorizontalPodAutoscaler)
+			h.enqueueHpa(hpa)
+		}
+
+		logger.HorizontalControllerLogger.Printf("[periodicallyScaleAll] enqueue all Hpa finish\n")
+	}
 }
 
 func (h *horizontalController) runWorker(ctx context.Context) {

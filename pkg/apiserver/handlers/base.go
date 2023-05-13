@@ -13,6 +13,15 @@ import (
 	"net/http"
 )
 
+func HandleClearAll(c *gin.Context) {
+	err := etcd.Clear()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "OK"})
+}
+
 func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 
 	// read request body

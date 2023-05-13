@@ -27,6 +27,9 @@ func (h httpServer) Run(addr string) (err error) {
 
 func (h httpServer) BindHandlers() {
 
+	// Clear all
+	h.router.GET(api.ClearAllURL, handlers.HandleClearAll)
+
 	/*--------------------- Pod ---------------------*/
 	// Create a Pod
 	// POST /api/pods/
