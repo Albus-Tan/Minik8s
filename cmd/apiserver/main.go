@@ -1,8 +1,16 @@
 package main
 
-import "minik8s/pkg/apiserver"
+import (
+	"context"
+	"minik8s/pkg/apiserver"
+)
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	apiServer := apiserver.New()
-	apiServer.Run()
+	apiServer.Run(cancel)
+
+	<-ctx.Done()
 }

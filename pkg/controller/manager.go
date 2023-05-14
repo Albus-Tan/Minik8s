@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"log"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
@@ -10,10 +9,11 @@ import (
 	"minik8s/pkg/controller/cache"
 	"minik8s/pkg/controller/podautoscaler"
 	"minik8s/pkg/controller/replicaset"
+	"minik8s/pkg/logger"
 )
 
 type Manager interface {
-	Run()
+	Run(ctx context.Context, cancel context.CancelFunc)
 }
 
 func NewControllerManager() Manager {
@@ -61,27 +61,21 @@ func NewDefaultClientSet(objType types.ApiObjectType) (client.Interface, cache.I
 	return restClient, informer
 }
 
-func (m *manager) Run() {
-	//TODO implement me
-	log.SetPrefix("[ControllerManager] ")
-	log.Printf("manager start\n")
+func (m *manager) Run(ctx context.Context, cancel context.CancelFunc) {
 
-	stopCh := make(chan struct{})
-	ctx, cancel := context.WithCancel(context.Background())
+	logger.ControllerManagerLogger.Printf("[ControllerManager] manager start\n")
+	defer logger.ControllerManagerLogger.Printf("[ControllerManager] manager init finish\n")
 
 	// Stop controller manager and all related go routines
-	defer close(stopCh)
-	defer cancel()
+	// use stopCh := ctx.Done()
 
 	// Run Informer
-	m.podInformer.Run(stopCh)
-	m.rsInformer.Run(stopCh)
-	m.hpaInformer.Run(stopCh)
+	m.podInformer.Run(ctx.Done())
+	m.rsInformer.Run(ctx.Done())
+	m.hpaInformer.Run(ctx.Done())
 
 	// Run Controller
 	m.replicaSetController.Run(ctx)
 	m.horizontalController.Run(ctx)
 
-	// loop until cancel
-	<-ctx.Done()
 }

@@ -51,20 +51,19 @@ func NewScheduler() *Scheduler {
 		nodeClient:      nodeClient,
 		nodeListWatcher: nodeListWatcher,
 		schedulingQueue: datastructure.NewConcurrentQueue(),
+		nodesQueue:      datastructure.NewConcurrentQueue(),
 	}
 }
 
-func (s *Scheduler) Run() {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (s *Scheduler) Run(ctx context.Context, cancel context.CancelFunc) {
 
 	logger.SchedulerLogger.Printf("[Scheduler] start\n")
-	defer logger.SchedulerLogger.Printf("[Scheduler] finish\n")
+	defer logger.SchedulerLogger.Printf("[Scheduler] init finish\n")
 
 	syncChan := make(chan bool)
 
 	go func() {
+		defer cancel()
 		err := s.listAndWatchNodes(syncChan, ctx.Done())
 		if err != nil {
 			logger.SchedulerLogger.Printf("[Scheduler] listAndWatchNodes failed, err: %v\n", err)
@@ -75,16 +74,17 @@ func (s *Scheduler) Run() {
 	<-syncChan
 
 	go func() {
+		defer cancel()
 		err := s.listAndWatchPods(ctx.Done())
 		if err != nil {
 			logger.SchedulerLogger.Printf("[Scheduler] listAndWatchPods failed, err: %v\n", err)
 		}
 	}()
 
-	go s.runScheduleWorker(ctx)
-
-	// loop until cancel
-	<-ctx.Done()
+	go func() {
+		defer cancel()
+		s.runScheduleWorker(ctx)
+	}()
 
 }
 
