@@ -1,11 +1,13 @@
 package node
 
 import (
+	"log"
 	"minik8s/config"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
+	"strconv"
 )
 
 func CreateWorkerNode() *core.Node {
@@ -49,6 +51,34 @@ type NodeCreator struct {
 
 func (nc *NodeCreator) initNode() {
 	nc.nodeInfo = config.LoadNodeFromTemplate(nc.ty)
+	nc.nodeInfo.Name = nc.generateNodeName()
+}
+
+var nodeNum int
+
+func init() {
+	nodeNum = 0
+}
+
+const (
+	NameMaster       = "master"
+	NameWorkerPrefix = "node"
+	NameUndefined    = "undefined"
+)
+
+func (nc *NodeCreator) generateNodeName() string {
+	var name string
+	switch nc.ty {
+	case config.Master:
+		name = NameMaster
+	case config.Worker:
+		nodeNum++
+		name = NameWorkerPrefix + strconv.Itoa(nodeNum)
+	default:
+		name = NameUndefined
+	}
+	log.Printf("[NodeCreator] Generate node name: %v\n", name)
+	return name
 }
 
 func (nc *NodeCreator) registerNode() {
