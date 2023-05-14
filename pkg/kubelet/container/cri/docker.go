@@ -33,8 +33,8 @@ func (c *dockerClient) ContainerStart(ctx context.Context, name string) error {
 	return c.Client.ContainerStart(ctx, c.ContainerId(ctx, name), types.ContainerStartOptions{})
 }
 
-func (c *dockerClient) ContainerInspect(ctx context.Context, name string) (bool, error) {
-	resp, err := c.Client.ContainerInspect(ctx, c.ContainerId(ctx, name))
+func (c *dockerClient) ContainerInspect(ctx context.Context, id string) (bool, error) {
+	resp, err := c.Client.ContainerInspect(ctx, id)
 	if err != nil {
 		return false, err
 	}
