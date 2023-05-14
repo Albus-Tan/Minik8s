@@ -115,7 +115,8 @@ func (s *Scheduler) processNextPodToSchedule() bool {
 	}
 
 	nodeBind := s.doSchedule(pod)
-	if nodeBind != nil {
+	if nodeBind == nil {
+		logger.SchedulerLogger.Printf("[processNextPodToSchedule] pod %v bind failed\n", pod.UID)
 		s.enqueuePod(pod)
 		return false
 	}
@@ -213,14 +214,17 @@ func (s *Scheduler) listAndWatchPods(stopCh <-chan struct{}) error {
 
 func (s *Scheduler) enqueuePod(pod *core.Pod) {
 	s.schedulingQueue.Enqueue(pod)
+	logger.SchedulerLogger.Printf("[enqueuePod] pod %v enqueued\n", pod.UID)
 }
 
 func (s *Scheduler) dequeuePod() *core.Pod {
 	podItem, exist := s.schedulingQueue.Dequeue()
 	if exist {
 		pod := podItem.(*core.Pod)
+		logger.SchedulerLogger.Printf("[dequeuePod] pod %v equeued\n", pod.UID)
 		return pod
 	} else {
+		logger.SchedulerLogger.Printf("[dequeuePod] queue empty\n")
 		return nil
 	}
 }
@@ -244,6 +248,7 @@ loop:
 			case watch.Added:
 				newPod := (event.Object).(*core.Pod)
 				s.enqueuePod(newPod)
+				logger.SchedulerLogger.Printf("[handleWatchPods] new Pod event, handle pod %v created\n", newPod.UID)
 			case watch.Modified:
 				// ignore
 			case watch.Deleted:
