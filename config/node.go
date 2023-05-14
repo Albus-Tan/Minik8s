@@ -17,23 +17,19 @@ const (
 	Worker NodeType = "Worker"
 )
 
+// Name of node in ConfigFile must be unique
+// and name of master node must be "master"
 const (
-	RelativePath             = "config"
-	MasterNodeConfigFileName = "master.json"
-	WorkerNodeConfigFileName = "worker.json"
+	RelativePath              = "config"
+	MasterNodeConfigFileName  = "master.json"
+	Worker1NodeConfigFileName = "worker1.json"
+	Worker2NodeConfigFileName = "worker2.json"
 )
 
-func LoadNodeFromTemplate(t NodeType) *core.Node {
+func LoadNodeFromTemplate(configFileName string) *core.Node {
 	path, _ := os.Getwd()
 	path = filepath.Join(path, RelativePath)
-	switch t {
-	case Master:
-		path = filepath.Join(path, MasterNodeConfigFileName)
-	case Worker:
-		path = filepath.Join(path, WorkerNodeConfigFileName)
-	default:
-		return nil
-	}
+	path = filepath.Join(path, configFileName)
 
 	file, err := os.ReadFile(path)
 	if err != nil {

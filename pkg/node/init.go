@@ -10,14 +10,14 @@ import (
 	"strconv"
 )
 
-func CreateWorkerNode() *core.Node {
+func CreateWorkerNode(configFileName string) *core.Node {
 	nodeCli, _ := apiclient.NewRESTClient(types.NodeObjectType)
 	nc := &NodeCreator{
 		nodeClient: nodeCli,
 		nodeInfo:   nil,
 		ty:         config.Worker,
 	}
-	nc.initNode()
+	nc.initNode(configFileName)
 	nc.registerNode()
 	return nc.nodeInfo
 }
@@ -29,7 +29,7 @@ func CreateMasterNode() *core.Node {
 		nodeInfo:   nil,
 		ty:         config.Master,
 	}
-	nc.initNode()
+	nc.initNode(config.MasterNodeConfigFileName)
 	nc.registerNode()
 	return nc.nodeInfo
 }
@@ -49,7 +49,7 @@ type NodeCreator struct {
 	nodeInfo   *core.Node
 }
 
-func (nc *NodeCreator) initNode() {
+func (nc *NodeCreator) initNode(configFileName string) {
 	// check if master node exist
 	if nc.ty == config.Master {
 		nodeList, err := nc.nodeClient.GetAll()
@@ -67,7 +67,7 @@ func (nc *NodeCreator) initNode() {
 		}
 	}
 
-	nc.nodeInfo = config.LoadNodeFromTemplate(nc.ty)
+	nc.nodeInfo = config.LoadNodeFromTemplate(configFileName)
 	nc.nodeInfo.Name = nc.generateNodeName()
 }
 
