@@ -127,14 +127,16 @@ loop:
 			if !ok {
 				break loop
 			}
-			log.Printf("[handleWatchPods] event %v\n", event)
-			log.Printf("[handleWatchPods] event object %v\n", event.Object)
-			eventCount += 1
 
 			p := event.Object.(*core.Pod)
 
 			// filter pod not belong to current node
 			if p.Spec.NodeName == k.node.Name {
+
+				log.Printf("[handleWatchPods] event %v\n", event)
+				log.Printf("[handleWatchPods] event object %v\n", event.Object)
+				eventCount += 1
+
 				switch event.Type {
 				case watch.Added:
 					// new Pod event, but not scheduled
