@@ -50,6 +50,23 @@ type NodeCreator struct {
 }
 
 func (nc *NodeCreator) initNode() {
+	// check if master node exist
+	if nc.ty == config.Master {
+		nodeList, err := nc.nodeClient.GetAll()
+		if err != nil {
+			panic(err)
+			return
+		}
+		nodeItems := nodeList.GetIApiObjectArr()
+		for _, nodeItem := range nodeItems {
+			n := nodeItem.(*core.Node)
+			if n.Name == NameMaster {
+				// master node exist
+				panic("master node exist, can not create another")
+			}
+		}
+	}
+
 	nc.nodeInfo = config.LoadNodeFromTemplate(nc.ty)
 	nc.nodeInfo.Name = nc.generateNodeName()
 }
