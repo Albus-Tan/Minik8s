@@ -15,7 +15,7 @@ var deleteCmd = &cobra.Command{
 		s := args[0]
 		switch s {
 		case "pod":
-			//get localhost:8080/api/pods:name
+			//delete localhost:8080/api/pods:name
 			if len(args) < 2 {
 				fmt.Println("please input the pod name")
 				return
@@ -29,12 +29,52 @@ var deleteCmd = &cobra.Command{
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
 		case "namespace":
-			//get localhost:8080/api/namespaces
+			//delete localhost:8080/api/namespaces
 			url := config.ApiUrl() + "namespaces/"
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
+		case "node":
+			//delete localhost:8080/api/nodes/:name
+			if len(args) < 2 {
+				fmt.Println("please input the node name")
+				return
+			}
+			nodename := args[1]
+			url := config.ApiUrl() + "nodes/"
+			url = url + ":" + nodename
+			req, _ := http.NewRequest("DELETE", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "replicaset":
+			//delete localhost:8080/api/replicasets/:name
+			if len(args) < 2 {
+				fmt.Println("please input the replicaset name")
+				return
+			}
+			replicasetname := args[1]
+			url := config.ApiUrl() + "replicasets/"
+			url = url + ":" + replicasetname
+			req, _ := http.NewRequest("DELETE", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+		case "hpa":
+			//delete localhost:8080/api/hpa/:name
+			if len(args) < 2 {
+				fmt.Println("please input the hpa name")
+				return
+			}
+			hpaname := args[1]
+			url := config.ApiUrl() + "hpa/"
+			url = url + ":" + hpaname
+			req, _ := http.NewRequest("DELETE", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+		default:
+			fmt.Println("please input the right command")
 		}
+
 	},
 }
 

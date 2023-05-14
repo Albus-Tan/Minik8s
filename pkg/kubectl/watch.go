@@ -36,6 +36,40 @@ var watchCmd = &cobra.Command{
 			req.Header.Add("namespace", namespace)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
+
+		case "replicasets":
+			url := config.ApiUrl() + "watch/" + "replicasets/"
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "replicaset":
+			if len(args) < 2 {
+				fmt.Println("please input the replicaset name")
+				return
+			}
+			replicasetname := args[1]
+			url := config.ApiUrl() + "watch/" + "replicasets/"
+			url = url + ":" + replicasetname
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+		case "hpas":
+			url := config.ApiUrl() + "watch/" + "hpas/"
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+		case "hpa":
+			if len(args) < 2 {
+				fmt.Println("please input the hpa name")
+				return
+			}
+			hpaname := args[1]
+			url := config.ApiUrl() + "watch/" + "hpas/"
+			url = url + ":" + hpaname
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
 		default:
 			fmt.Println("watch error")
 

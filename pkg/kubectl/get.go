@@ -18,7 +18,6 @@ var getCmd = &cobra.Command{
 		case "pods":
 			//get localhost:8080/api/pods:name
 			url := config.ApiUrl() + "pods/"
-
 			req, _ := http.NewRequest("GET", url, nil)
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
@@ -32,7 +31,6 @@ var getCmd = &cobra.Command{
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
 		case "pod":
-			//get localhost:8080/api/pod:name
 			if len(args) < 2 {
 				fmt.Println("please input the pod name")
 				return
@@ -58,7 +56,77 @@ var getCmd = &cobra.Command{
 			req.Header.Add("namespace", namespace)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
+		case "clear":
+			url := config.ApiUrl() + "clear/"
+			req, _ := http.NewRequest("DELETE", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
 
+		case "nodes":
+			url := config.ApiUrl() + "nodes/"
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "replicasets":
+			url := config.ApiUrl() + "replicasets/"
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "replicaset":
+			if len(args) < 2 {
+				fmt.Println("please input the replicaset name")
+				return
+			}
+			replicasetname := args[1]
+			url := config.ApiUrl() + "replicasets/"
+			url = url + ":" + replicasetname
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "replicasetstatus":
+			if len(args) < 2 {
+				fmt.Println("please input the replicaset name")
+				return
+			}
+			replicasetname := args[1]
+			url := config.ApiUrl() + "replicasets/"
+			url = url + ":" + replicasetname + "/status"
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "hpas":
+			url := config.ApiUrl() + "hpas/"
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "hpa":
+			if len(args) < 2 {
+				fmt.Println("please input the hpa name")
+				return
+			}
+			hpaname := args[1]
+			url := config.ApiUrl() + "hpas/"
+			url = url + ":" + hpaname
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
+
+		case "hpastatus":
+			if len(args) < 2 {
+				fmt.Println("please input the hpa name")
+				return
+			}
+			hpaname := args[1]
+			url := config.ApiUrl() + "hpas/"
+			url = url + ":" + hpaname + "/status"
+			req, _ := http.NewRequest("GET", url, nil)
+			res, _ := http.DefaultClient.Do(req)
+			fmt.Println(res)
 		default:
 			fmt.Println("get error")
 		}
