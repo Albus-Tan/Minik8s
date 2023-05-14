@@ -1,13 +1,14 @@
 package node
 
 import (
+	"fmt"
 	"log"
 	"minik8s/config"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
-	"strconv"
+	"minik8s/utils"
 )
 
 func CreateWorkerNode(configFileName string) *core.Node {
@@ -50,8 +51,15 @@ type NodeCreator struct {
 }
 
 func (nc *NodeCreator) initNode(configFileName string) {
-	// check if master node exist
+
+	nc.nodeInfo = config.LoadNodeFromTemplate(configFileName)
 	if nc.ty == config.Master {
+		nc.nodeInfo.Name = NameMaster
+	}
+	if nc.nodeInfo.Name == NameEmpty {
+		nc.nodeInfo.Name = nc.generateNodeName()
+	} else {
+		// check if node name exist
 		nodeList, err := nc.nodeClient.GetAll()
 		if err != nil {
 			panic(err)
@@ -60,27 +68,24 @@ func (nc *NodeCreator) initNode(configFileName string) {
 		nodeItems := nodeList.GetIApiObjectArr()
 		for _, nodeItem := range nodeItems {
 			n := nodeItem.(*core.Node)
-			if n.Name == NameMaster {
-				// master node exist
-				panic("master node exist, can not create another")
+			if n.Name == nc.nodeInfo.Name {
+				if nc.ty == config.Master {
+					// master node exist
+					panic("master exist, can not create another")
+				} else {
+					// node name exist
+					panic(fmt.Sprintf("node name %v exist, can not create another", nc.nodeInfo.Name))
+				}
 			}
 		}
 	}
-
-	nc.nodeInfo = config.LoadNodeFromTemplate(configFileName)
-	nc.nodeInfo.Name = nc.generateNodeName()
-}
-
-var nodeNum int
-
-func init() {
-	nodeNum = 0
 }
 
 const (
 	NameMaster       = "master"
 	NameWorkerPrefix = "node"
 	NameUndefined    = "undefined"
+	NameEmpty        = ""
 )
 
 func (nc *NodeCreator) generateNodeName() string {
@@ -89,8 +94,7 @@ func (nc *NodeCreator) generateNodeName() string {
 	case config.Master:
 		name = NameMaster
 	case config.Worker:
-		nodeNum++
-		name = NameWorkerPrefix + strconv.Itoa(nodeNum)
+		name = utils.AppendRandomNameSuffix(NameWorkerPrefix)
 	default:
 		name = NameUndefined
 	}
