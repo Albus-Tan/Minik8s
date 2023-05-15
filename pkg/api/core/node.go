@@ -118,6 +118,9 @@ type NodeSpec struct {
 	// +optional
 	// +patchStrategy=merge
 	PodCIDRs []string `json:"podCIDRs,omitempty" protobuf:"bytes,7,opt,name=podCIDRs" patchStrategy:"merge"`
+
+	// Address represents the node IP address
+	Address string `json:"address,omitempty"`
 }
 
 // NodeStatus is information about the current status of a node.

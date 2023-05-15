@@ -1,0 +1,22 @@
+{
+  "apiVersion": "v1",
+  "kind": "Node",
+  "metadata": {
+    "labels": {
+      "beta.kubernetes.io/arch": "amd64",
+      "beta.kubernetes.io/os": "linux",
+      "kubernetes.io/arch": "amd64",
+      "kubernetes.io/hostname": "master",
+      "kubernetes.io/os": "linux",
+      "node-role.kubernetes.io/control-plane": "",
+      "node.kubernetes.io/exclude-from-external-load-balancers": ""
+    },
+    "name": "master"
+  },
+  "spec": {
+    "podCIDR": "10.244.0.0/24",
+    "podCIDRs": [
+      "10.244.0.0/24"
+    ]
+  }
+}

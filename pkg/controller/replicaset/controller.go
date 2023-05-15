@@ -57,14 +57,16 @@ type replicaSetController struct {
 
 func (rsc *replicaSetController) Run(ctx context.Context) {
 
-	// logger.ReplicaSetControllerLogger.SetPrefix()
-	logger.ReplicaSetControllerLogger.Printf("[ReplicaSetController] start\n")
+	go func() {
+		logger.ReplicaSetControllerLogger.Printf("[ReplicaSetController] start\n")
+		defer logger.ReplicaSetControllerLogger.Printf("[ReplicaSetController] finish\n")
 
-	rsc.runWorker(ctx)
+		rsc.runWorker(ctx)
 
-	// wait for controller manager stop
-	<-ctx.Done()
-
+		// wait for controller manager stop
+		<-ctx.Done()
+	}()
+	return
 }
 
 func (rsc *replicaSetController) RSKeyFunc(rs *core.ReplicaSet) string {
@@ -481,7 +483,7 @@ func (rsc *replicaSetController) updatePreOwnedPods(rs *core.ReplicaSet, preOwne
 		// Ask ApiServer to update pod
 		_, _, err := rsc.PodClient.Put(p.UID, &p)
 		if err != nil {
-			logger.ReplicaSetControllerLogger.Printf("[increaseReplica] Put failed when ask ApiServer to update pod uid %v, err: %v\n", p.UID, err)
+			logger.ReplicaSetControllerLogger.Printf("[updatePreOwnedPods] Put failed when ask ApiServer to update pod uid %v, err: %v\n", p.UID, err)
 		}
 	}
 }

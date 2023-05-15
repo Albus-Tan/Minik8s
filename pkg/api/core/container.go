@@ -1,5 +1,7 @@
 package core
 
+import "minik8s/pkg/api/types"
+
 // Container is a single application container that you want to run within a pod.
 type Container struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -62,8 +64,9 @@ type Container struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
-	// TODO
-	Resources map[string]string `json:"resources,omitempty"`
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	// Resources map[types.ResourceName]string `json:"resources,omitempty"`
+
 	// Pod volumes to mount into the container's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -100,6 +103,8 @@ type Container struct {
 	// Default is false.
 	// +optional
 	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
+
+	Master string `json:"-"`
 }
 
 // PullPolicy describes a policy for if/when to pull a container image
@@ -245,3 +250,20 @@ type ContainerState struct {
 	// +optional
 	Terminated *ContainerStateTerminated `json:"terminated,omitempty" protobuf:"bytes,3,opt,name=terminated"`
 }
+
+// ResourceRequirements describes the compute resource requirements.
+type ResourceRequirements struct {
+	// Limits describes the maximum amount of compute resources allowed.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +optional
+	Limits ResourceList `json:"limits,omitempty" protobuf:"bytes,1,rep,name=limits,casttype=ResourceList,castkey=ResourceName"`
+	// Requests describes the minimum amount of compute resources required.
+	// If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+	// otherwise to an implementation-defined value. Requests cannot exceed Limits.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +optional
+	Requests ResourceList `json:"requests,omitempty" protobuf:"bytes,2,rep,name=requests,casttype=ResourceList,castkey=ResourceName"`
+}
+
+// ResourceList is a set of (resource name, quantity) pairs.
+type ResourceList map[types.ResourceName]types.Quantity

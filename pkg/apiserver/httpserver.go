@@ -27,6 +27,9 @@ func (h httpServer) Run(addr string) (err error) {
 
 func (h httpServer) BindHandlers() {
 
+	// Clear all
+	h.router.GET(api.ClearAllURL, handlers.HandleClearAll)
+
 	/*--------------------- Pod ---------------------*/
 	// Create a Pod
 	// POST /api/pods/
@@ -150,10 +153,33 @@ func (h httpServer) BindHandlers() {
 	// PUT /api/replicasets/{name}/status
 	h.router.PUT(api.ReplicaSetStatusURL, handlers.HandlePutReplicaSetStatus)
 
+	/*--------------------- HorizontalPodAutoscaler ---------------------*/
+	// Create a HorizontalPodAutoscaler
+	// POST /api/hpa
+	h.router.POST(api.HorizontalPodAutoscalersURL, handlers.HandlePostHorizontalPodAutoscaler)
+	// Update/Replace the specified HorizontalPodAutoscaler
+	// PUT /api/hpa/{name}
+	h.router.PUT(api.HorizontalPodAutoscalerURL, handlers.HandlePutHorizontalPodAutoscaler)
+	// Delete a HorizontalPodAutoscaler
+	// DELETE /api/hpa/{name}
+	h.router.DELETE(api.HorizontalPodAutoscalerURL, handlers.HandleDeleteHorizontalPodAutoscaler)
+	// Read the specified HorizontalPodAutoscaler
+	// GET /api/hpa/{name}
+	h.router.GET(api.HorizontalPodAutoscalerURL, handlers.HandleGetHorizontalPodAutoscaler)
+	// List or watch objects of kind HorizontalPodAutoscaler
+	// GET /api/hpa
+	h.router.GET(api.HorizontalPodAutoscalersURL, handlers.HandleGetHorizontalPodAutoscalers)
+	// Watch changes to an object of kind HorizontalPodAutoscaler
+	// GET /api/watch/hpa/{name}
+	h.router.GET(api.WatchHorizontalPodAutoscalerURL, handlers.HandleWatchHorizontalPodAutoscaler)
+	// Watch individual changes to a list of HorizontalPodAutoscaler
+	// GET /api/watch/hpa
+	h.router.GET(api.WatchHorizontalPodAutoscalersURL, handlers.HandleWatchHorizontalPodAutoscalers)
+	/*--------------------- HorizontalPodAutoscaler Status ---------------------*/
+	// Read status of the specified HorizontalPodAutoscaler
+	// GET /api/hpa/{name}/status
+	h.router.GET(api.HorizontalPodAutoscalerStatusURL, handlers.HandleGetHorizontalPodAutoscalerStatus)
+	// Replace status of the specified HorizontalPodAutoscaler
+	// PUT /api/hpa/{name}/status
+	h.router.PUT(api.HorizontalPodAutoscalerStatusURL, handlers.HandlePutHorizontalPodAutoscalerStatus)
 }
-
-//func handleGetTest(c *gin.Context) {
-//	c.JSON(200, gin.H{
-//		"message": "hello world",
-//	})
-//}

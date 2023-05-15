@@ -1,0 +1,53 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "ReplicaSet",
+  "metadata": {
+    "generation": 1,
+    "labels": {
+      "app": "myapp",
+      "tier": "frontend"
+    },
+    "name": "myapp-replicas",
+    "namespace": "default"
+  },
+  "spec": {
+    "replicas": 3,
+    "selector": {
+      "matchLabels": {
+        "tier": "frontend"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "myapp",
+          "tier": "frontend"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "nginx",
+            "imagePullPolicy": "Always",
+            "name": "nginx",
+            "ports": [
+              {
+                "containerPort": 80,
+                "protocol": "TCP"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "1"
+              },
+              "requests": {
+                "cpu": "100m"
+              }
+            }
+          }
+        ],
+        "restartPolicy": "Always"
+      }
+    }
+  }
+}

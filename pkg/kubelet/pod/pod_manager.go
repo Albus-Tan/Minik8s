@@ -51,15 +51,11 @@ type basicManager struct {
 
 // NewPodManager returns a functional Manager.
 func NewPodManager() Manager {
-	pm := &basicManager{}
-
-	pm.lock.Lock()
-	defer pm.lock.Unlock()
-
-	pm.podByUID = make(map[types.UID]*core.Pod)
-	pm.podByFullName = make(map[string]*core.Pod)
-
-	return pm
+	return &basicManager{
+		lock:          sync.RWMutex{},
+		podByUID:      make(map[types.UID]*core.Pod),
+		podByFullName: make(map[types.UID]*core.Pod),
+	}
 }
 
 func (b *basicManager) GetPods() []*core.Pod {

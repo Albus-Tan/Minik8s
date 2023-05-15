@@ -8,6 +8,7 @@ var ApiServerLogger Logger
 var ApiClientLogger Logger
 var ControllerManagerLogger Logger
 var ReplicaSetControllerLogger Logger
+var HorizontalControllerLogger Logger
 var KubectlLogger Logger
 var KubeletLogger Logger
 
@@ -16,6 +17,7 @@ func init() {
 	ApiClientLogger = utils.NewComponentLogger("ApiClient")
 	ControllerManagerLogger = utils.NewComponentLogger("ControllerManager")
 	ReplicaSetControllerLogger = utils.NewComponentLogger("ReplicaSetController")
+	HorizontalControllerLogger = utils.NewComponentLogger("HorizontalController")
 	KubectlLogger = utils.NewComponentLogger("Kubectl")
 	KubeletLogger = utils.NewComponentLogger("Kubelet")
 }

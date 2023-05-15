@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
@@ -28,6 +29,10 @@ type Pod struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+
+	PauseId string `json:"-"`
+
+	CancelWorker context.CancelFunc `json:"-"`
 }
 
 func (p *Pod) DeleteOwnerReference(uid types.UID) {
