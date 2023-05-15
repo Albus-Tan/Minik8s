@@ -15,6 +15,7 @@ import (
 	"minik8s/pkg/kubelet/constants"
 	"minik8s/pkg/kubelet/container/cri"
 	"minik8s/pkg/kubelet/pod"
+	"minik8s/pkg/logger"
 	"sync"
 	"time"
 )
@@ -74,7 +75,6 @@ func (k *kubelet) Run() {
 	k.startCadvisorClient()
 
 	// start watch pods
-	// FIXME: for multi machine, change it to watching bind pod events
 	k.watchPods(ctx)
 }
 
@@ -127,31 +127,39 @@ loop:
 			if !ok {
 				break loop
 			}
-			log.Printf("[handleWatchPods] event %v\n", event)
-			log.Printf("[handleWatchPods] event object %v\n", event.Object)
-			eventCount += 1
 
 			p := event.Object.(*core.Pod)
 
-			switch event.Type {
-			case watch.Added:
-				// new Pod event
-				k.handlePodCreate(p)
-			case watch.Modified:
-				// Pod modified event
-				k.handlePodModify(p)
-			case watch.Deleted:
-				// Pod deleted event
-				k.handlePodDelete(p)
-			case watch.Bookmark:
-				panic("[handleWatchPods] Event Type watch.Bookmark received")
-			case watch.Error:
-				log.Printf("[handleWatchPods] watch.Error event object received %v\n", event.Object)
-				log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, types.PodObjectType, eventCount)
-				return event.Object.(*core.ErrorApiObject).GetError()
-			default:
-				panic("[handleWatchPods] Unknown Event Type received")
+			// filter pod not belong to current node
+			if p.Spec.NodeName == k.node.Name {
+
+				log.Printf("[handleWatchPods] event %v\n", event)
+				log.Printf("[handleWatchPods] event object %v\n", event.Object)
+				eventCount += 1
+
+				switch event.Type {
+				case watch.Added:
+					// new Pod event, but not scheduled
+					// ignore
+				case watch.Modified:
+					// Pod modified event
+					// for multi machine, watch bind pod events belongs to watch.Modified event
+					// check and distinguish create and update in handlePodModify func
+					k.handlePodModify(p)
+				case watch.Deleted:
+					// Pod deleted event
+					k.handlePodDelete(p)
+				case watch.Bookmark:
+					panic("[handleWatchPods] Event Type watch.Bookmark received")
+				case watch.Error:
+					log.Printf("[handleWatchPods] watch.Error event object received %v\n", event.Object)
+					log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, types.PodObjectType, eventCount)
+					return event.Object.(*core.ErrorApiObject).GetError()
+				default:
+					panic("[handleWatchPods] Unknown Event Type received")
+				}
 			}
+
 		}
 	}
 	log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, types.PodObjectType, eventCount)
@@ -161,6 +169,9 @@ loop:
 func (k *kubelet) handlePodCreate(pod *core.Pod) {
 	k.lock.Lock()
 	defer k.lock.Unlock()
+
+	logger.KubeletLogger.Printf("New Pod %v bind to current node %v, start handle pod create on current machine\n", pod.UID, k.node.Name)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	k.createMasterContainer(ctx, pod)
 	k.createContainers(ctx, pod, pod.Spec.Containers)
@@ -183,6 +194,9 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 		k.handlePodCreate(pod)
 		return
 	}
+
+	logger.KubeletLogger.Printf("Pod %v update on current node %v, start handle pod modify\n", pod.UID, k.node.Name)
+
 	up := containersNew(old.Spec.Containers, pod.Spec.Containers)
 	down := containersNew(pod.Spec.Containers, old.Spec.Containers)
 	if len(up) == 0 && len(down) == 0 {
@@ -202,6 +216,9 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 func (k *kubelet) handlePodDelete(pod *core.Pod) {
 	k.lock.Lock()
 	defer k.lock.Unlock()
+
+	logger.KubeletLogger.Printf("Pod %v delete on current node %v, start handle pod delete\n", pod.UID, k.node.Name)
+
 	old, _ := k.podManager.GetPodByUID(pod.UID)
 	old.CancelWorker()
 	ctx := context.Background()

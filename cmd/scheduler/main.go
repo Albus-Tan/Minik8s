@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"minik8s/pkg/apiserver"
+	"minik8s/pkg/scheduler"
 )
 
 func main() {
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	apiServer := apiserver.New()
-	apiServer.Run(cancel)
+	s := scheduler.NewScheduler()
+	s.Run(ctx, cancel)
 
 	<-ctx.Done()
+
 }

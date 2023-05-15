@@ -1,21 +1,24 @@
 package node
 
 import (
+	"fmt"
+	"log"
 	"minik8s/config"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
+	"minik8s/utils"
 )
 
-func CreateWorkerNode() *core.Node {
+func CreateWorkerNode(configFileName string) *core.Node {
 	nodeCli, _ := apiclient.NewRESTClient(types.NodeObjectType)
 	nc := &NodeCreator{
 		nodeClient: nodeCli,
 		nodeInfo:   nil,
 		ty:         config.Worker,
 	}
-	nc.initNode()
+	nc.initNode(configFileName)
 	nc.registerNode()
 	return nc.nodeInfo
 }
@@ -27,7 +30,7 @@ func CreateMasterNode() *core.Node {
 		nodeInfo:   nil,
 		ty:         config.Master,
 	}
-	nc.initNode()
+	nc.initNode(config.MasterNodeConfigFileName)
 	nc.registerNode()
 	return nc.nodeInfo
 }
@@ -47,8 +50,56 @@ type NodeCreator struct {
 	nodeInfo   *core.Node
 }
 
-func (nc *NodeCreator) initNode() {
-	nc.nodeInfo = config.LoadNodeFromTemplate(nc.ty)
+func (nc *NodeCreator) initNode(configFileName string) {
+
+	nc.nodeInfo = config.LoadNodeFromTemplate(configFileName)
+	if nc.ty == config.Master {
+		nc.nodeInfo.Name = NameMaster
+	}
+	if nc.nodeInfo.Name == NameEmpty {
+		nc.nodeInfo.Name = nc.generateNodeName()
+	} else {
+		// check if node name exist
+		nodeList, err := nc.nodeClient.GetAll()
+		if err != nil {
+			panic(err)
+			return
+		}
+		nodeItems := nodeList.GetIApiObjectArr()
+		for _, nodeItem := range nodeItems {
+			n := nodeItem.(*core.Node)
+			if n.Name == nc.nodeInfo.Name {
+				if nc.ty == config.Master {
+					// master node exist
+					panic("master exist, can not create another")
+				} else {
+					// node name exist
+					panic(fmt.Sprintf("node name %v exist, can not create another", nc.nodeInfo.Name))
+				}
+			}
+		}
+	}
+}
+
+const (
+	NameMaster       = "master"
+	NameWorkerPrefix = "node"
+	NameUndefined    = "undefined"
+	NameEmpty        = ""
+)
+
+func (nc *NodeCreator) generateNodeName() string {
+	var name string
+	switch nc.ty {
+	case config.Master:
+		name = NameMaster
+	case config.Worker:
+		name = utils.AppendRandomNameSuffix(NameWorkerPrefix)
+	default:
+		name = NameUndefined
+	}
+	log.Printf("[NodeCreator] Generate node name: %v\n", name)
+	return name
 }
 
 func (nc *NodeCreator) registerNode() {
