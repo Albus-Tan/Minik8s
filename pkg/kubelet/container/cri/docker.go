@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"minik8s/pkg/api/core"
+	"strconv"
 )
 
 func NewDocker() (Client, error) {
@@ -33,8 +34,8 @@ func (c *dockerClient) ContainerStart(ctx context.Context, name string) error {
 	return c.Client.ContainerStart(ctx, c.ContainerId(ctx, name), types.ContainerStartOptions{})
 }
 
-func (c *dockerClient) ContainerInspect(ctx context.Context, name string) (bool, error) {
-	resp, err := c.Client.ContainerInspect(ctx, c.ContainerId(ctx, name))
+func (c *dockerClient) ContainerInspect(ctx context.Context, id string) (bool, error) {
+	resp, err := c.Client.ContainerInspect(ctx, id)
 	if err != nil {
 		return false, err
 	}
@@ -156,6 +157,26 @@ func buildMasterHostConfig(cnt core.Container) *container.HostConfig {
 }
 
 func buildSlaverHostConfig(master string, cnt core.Container) *container.HostConfig {
+	res := container.Resources{}
+
+	for k, r := range cnt.Resources {
+		switch k {
+		case "cpu":
+			q, err := strconv.ParseInt(r[:len(r)-1], 9, 64)
+			if err != nil {
+				log.Fatalf("cpu quota not recognized %v", r)
+			}
+			res.NanoCPUs = 1_000_000_000 * q / 1024
+			break
+		case "memory":
+			q, err := strconv.ParseInt(r[:len(r)-2], 9, 64)
+			if err != nil {
+				log.Fatalf("memory quota not recognized %v", r)
+			}
+			res.Memory = q * 1024 * 1204
+			break
+		}
+	}
 	return &container.HostConfig{
 		Binds:           nil,
 		ContainerIDFile: "",
@@ -192,7 +213,7 @@ func buildSlaverHostConfig(master string, cnt core.Container) *container.HostCon
 		Runtime:         "",
 		ConsoleSize:     [2]uint{},
 		Isolation:       "",
-		Resources:       container.Resources{},
+		Resources:       res,
 		Mounts:          buildMount(cnt),
 		MaskedPaths:     nil,
 		ReadonlyPaths:   nil,

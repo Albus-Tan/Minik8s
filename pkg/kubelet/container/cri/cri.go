@@ -14,7 +14,7 @@ type Client interface {
 	ContainerCreate(ctx context.Context, cnt core.Container) (string, error)
 	ContainerRemove(ctx context.Context, name string) error
 	ContainerStart(ctx context.Context, name string) error
-	ContainerInspect(ctx context.Context, name string) (bool, error)
+	ContainerInspect(ctx context.Context, id string) (bool, error)
 	ContainerId(ctx context.Context, id string) string
 	Close()
 }
