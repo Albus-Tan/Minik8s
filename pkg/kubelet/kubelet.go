@@ -165,17 +165,14 @@ loop:
 	return nil
 }
 
-func (k *kubelet) handlePodCreate(pod *core.Pod) {
-	k.lock.Lock()
-	defer k.lock.Unlock()
+func (k *kubelet) createPod(pod *core.Pod) {
 
 	logger.KubeletLogger.Printf("New Pod %v bind to current node %v, start handle pod create on current machine\n", pod.UID, k.node.Name)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	k.createMasterContainer(ctx, pod)
 	k.createContainers(ctx, pod, pod.Spec.Containers)
 	go k.startWatchContainers(ctx, *pod)
-	pod.CancelWorker = cancel
 	// add pod to podManager
 	k.podManager.AddPod(pod)
 }
@@ -185,7 +182,7 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 	defer k.lock.Unlock()
 	old, found := k.podManager.GetPodByUID(pod.UID)
 	if !found {
-		k.handlePodCreate(pod)
+		k.createPod(pod)
 		return
 	}
 
@@ -193,13 +190,11 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 
 	up := containersNew(old.Spec.Containers, pod.Spec.Containers)
 	down := containersNew(pod.Spec.Containers, old.Spec.Containers)
-	old.CancelWorker()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	pod.CancelWorker = cancel
+	ctx := context.Background()
 	k.removeContainers(ctx, pod, down)
 	k.createContainers(ctx, pod, up)
-	k.podManager.UpdatePod(pod)
+	go k.startWatchContainers(ctx, *pod)
 }
 
 func (k *kubelet) handlePodDelete(pod *core.Pod) {
@@ -213,7 +208,6 @@ func (k *kubelet) handlePodDelete(pod *core.Pod) {
 		log.Println("unconsistent delete")
 		return
 	}
-	old.CancelWorker()
 	ctx := context.Background()
 	k.removeContainers(ctx, old, old.Spec.Containers)
 	k.removeMasterContainer(ctx, pod)
@@ -311,46 +305,46 @@ func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
 }
 
 func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
+	time.Sleep(time.Second)
 	pod.Status.Phase = core.PodRunning
-	log.Println("start watch {}", pod.UID)
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("stop watch {} ", pod.UID)
-			return
-		default:
-			k.lock.Lock()
-			changed := false
-			for idx, c := range pod.Status.ContainerStatuses {
-				if c.State.Running != nil {
-					r, err := k.criClient.ContainerInspect(ctx, c.ContainerID)
-					if err != nil {
-						log.Println(err.Error())
-					}
-					if !r || err != nil {
-						changed = true
-						pod.Status.ContainerStatuses[idx].State = core.ContainerState{Terminated: &core.ContainerStateTerminated{
-							ExitCode:    0,
-							Signal:      0,
-							Reason:      "",
-							Message:     "",
-							ContainerID: c.ContainerID,
-						}}
-					}
+	log.Println("start watch ", pod.UID)
+	pod.Status.ContainerStatuses = make([]core.ContainerStatus, 0)
+	for _, container := range pod.Spec.Containers {
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, core.ContainerStatus{
+			Name: container.Name,
+			State: core.ContainerState{
+				Waiting:    nil,
+				Running:    &core.ContainerStateRunning{},
+				Terminated: nil,
+			},
+			Image:       container.Image,
+			ImageID:     container.Image,
+			ContainerID: k.criClient.ContainerId(ctx, container.Name),
+		})
+	}
+	for idx, c := range pod.Status.ContainerStatuses {
+		if c.State.Running != nil {
+			r, err := k.criClient.ContainerInspect(ctx, c.ContainerID)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			if !r || err != nil {
+				pod.Status.ContainerStatuses[idx].State = core.ContainerState{
+					Terminated: &core.ContainerStateTerminated{
+						ExitCode:    0,
+						Signal:      0,
+						Reason:      "",
+						Message:     "",
+						ContainerID: c.ContainerID,
+					},
 				}
 			}
-			if changed {
-				_, _, err := k.podClient.Put(pod.UID, &pod)
-				if err != nil {
-					log.Println(err.Error())
-
-				}
-				k.lock.Unlock()
-				return
-			}
-			k.lock.Unlock()
-			time.Sleep(time.Second)
 		}
 	}
+	_, _, err := k.podClient.Put(pod.UID, &pod)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	log.Println("stop watch ", pod.UID)
 
 }
