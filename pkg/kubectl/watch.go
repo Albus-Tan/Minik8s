@@ -30,7 +30,7 @@ var watchCmd = &cobra.Command{
 			}
 			podname := args[1]
 			url = config.ApiUrl() + "watch/" + "pods/"
-			url = url + ":" + podname
+			url = url + podname
 			req, _ := http.NewRequest("GET", url, nil)
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
@@ -50,7 +50,7 @@ var watchCmd = &cobra.Command{
 			}
 			replicasetname := args[1]
 			url := config.ApiUrl() + "watch/" + "replicasets/"
-			url = url + ":" + replicasetname
+			url = url + replicasetname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
@@ -66,7 +66,7 @@ var watchCmd = &cobra.Command{
 			}
 			hpaname := args[1]
 			url := config.ApiUrl() + "watch/" + "hpas/"
-			url = url + ":" + hpaname
+			url = url + hpaname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)

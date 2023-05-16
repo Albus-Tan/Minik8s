@@ -37,7 +37,7 @@ var getCmd = &cobra.Command{
 			}
 			podname := args[1]
 			url := config.ApiUrl() + "pods/"
-			url = url + ":" + podname
+			url = url + podname
 			req, _ := http.NewRequest("GET", url, nil)
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
@@ -50,7 +50,7 @@ var getCmd = &cobra.Command{
 				return
 			}
 			podname := args[1]
-			url = url + ":" + podname + "/status"
+			url = url + podname + "/status"
 			req, _ := http.NewRequest("GET", url, nil)
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
@@ -58,7 +58,7 @@ var getCmd = &cobra.Command{
 			fmt.Println(res)
 		case "clear":
 			url := config.ApiUrl() + "clear/"
-			req, _ := http.NewRequest("DELETE", url, nil)
+			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
 
@@ -81,7 +81,7 @@ var getCmd = &cobra.Command{
 			}
 			replicasetname := args[1]
 			url := config.ApiUrl() + "replicasets/"
-			url = url + ":" + replicasetname
+			url = url + replicasetname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
@@ -93,7 +93,7 @@ var getCmd = &cobra.Command{
 			}
 			replicasetname := args[1]
 			url := config.ApiUrl() + "replicasets/"
-			url = url + ":" + replicasetname + "/status"
+			url = url + replicasetname + "/status"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
@@ -111,7 +111,7 @@ var getCmd = &cobra.Command{
 			}
 			hpaname := args[1]
 			url := config.ApiUrl() + "hpas/"
-			url = url + ":" + hpaname
+			url = url + hpaname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
@@ -123,7 +123,7 @@ var getCmd = &cobra.Command{
 			}
 			hpaname := args[1]
 			url := config.ApiUrl() + "hpas/"
-			url = url + ":" + hpaname + "/status"
+			url = url + hpaname + "/status"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)

@@ -22,7 +22,7 @@ var deleteCmd = &cobra.Command{
 			}
 			podname := args[1]
 			url := config.ApiUrl() + "pods/"
-			url = url + ":" + podname
+			url = url + podname
 			req, _ := http.NewRequest("DELETE", url, nil)
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
@@ -42,7 +42,7 @@ var deleteCmd = &cobra.Command{
 			}
 			nodename := args[1]
 			url := config.ApiUrl() + "nodes/"
-			url = url + ":" + nodename
+			url = url + nodename
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
@@ -55,7 +55,7 @@ var deleteCmd = &cobra.Command{
 			}
 			replicasetname := args[1]
 			url := config.ApiUrl() + "replicasets/"
-			url = url + ":" + replicasetname
+			url = url + replicasetname
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
@@ -67,7 +67,7 @@ var deleteCmd = &cobra.Command{
 			}
 			hpaname := args[1]
 			url := config.ApiUrl() + "hpa/"
-			url = url + ":" + hpaname
+			url = url + hpaname
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
 			fmt.Println(res)
