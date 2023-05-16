@@ -39,3 +39,11 @@ const (
 func CadvisorUrl(HostAddress string) string {
 	return HttpScheme + HostAddress + CadvisorPort
 }
+
+/*--------------- GPU ---------------*/
+// HPC config
+const (
+	PiHost          = "pilogin.hpc.sjtu.edu.cn"
+	HPCJobDirPrefix = "job-"
+	HPCHomeDir      = "/lustre/home/acct-stu/stu1653/"
+)
