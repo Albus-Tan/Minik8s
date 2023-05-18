@@ -7,6 +7,7 @@ import (
 	"minik8s/pkg/controller"
 	"minik8s/pkg/node"
 	"minik8s/pkg/scheduler"
+	"time"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 
 	apiServer := apiserver.New()
 	apiServer.Run(cancel)
-
+	time.Sleep(1 * time.Second)
 	log.Printf("[Master] master apiServer running\n")
 
 	n := node.CreateMasterNode()

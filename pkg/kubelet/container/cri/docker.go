@@ -3,14 +3,14 @@ package cri
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types"
+	dt "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"io"
 	"log"
 	"minik8s/pkg/api/core"
-	"strconv"
+	"minik8s/pkg/api/types"
 )
 
 func NewDocker() (Client, error) {
@@ -31,15 +31,22 @@ type dockerClient struct {
 }
 
 func (c *dockerClient) ContainerStart(ctx context.Context, name string) error {
-	return c.Client.ContainerStart(ctx, c.ContainerId(ctx, name), types.ContainerStartOptions{})
+	return c.Client.ContainerStart(ctx, c.ContainerId(ctx, name), dt.ContainerStartOptions{})
 }
 
-func (c *dockerClient) ContainerInspect(ctx context.Context, id string) (bool, error) {
+func (c *dockerClient) ContainerIsRunning(ctx context.Context, id string) (bool, error) {
 	resp, err := c.Client.ContainerInspect(ctx, id)
 	if err != nil {
 		return false, err
 	}
 	return resp.State.Running, nil
+}
+func (c *dockerClient) ContainerIP(ctx context.Context, id string) (string, error) {
+	resp, err := c.Client.ContainerInspect(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return resp.NetworkSettings.IPAddress, nil
 }
 
 func soundClose(cli *client.Client) {
@@ -58,7 +65,7 @@ func (c *dockerClient) ContainerCreate(ctx context.Context, cnt core.Container) 
 }
 
 func (c *dockerClient) ContainerRemove(ctx context.Context, name string) error {
-	return c.Client.ContainerRemove(ctx, c.ContainerId(ctx, name), types.ContainerRemoveOptions{
+	return c.Client.ContainerRemove(ctx, c.ContainerId(ctx, name), dt.ContainerRemoveOptions{
 		RemoveVolumes: false,
 		RemoveLinks:   false,
 		Force:         true,
@@ -74,7 +81,7 @@ func (c *dockerClient) containerMasterCreate(ctx context.Context, cnt core.Conta
 		return "", err
 	}
 	resp, err := c.Client.ContainerCreate(ctx, buildMasterContainerConfig(cnt), buildMasterHostConfig(cnt), nil, nil, cnt.Name)
-	if err == nil {
+	if err != nil {
 		return "", err
 	}
 	return resp.ID, nil
@@ -95,7 +102,7 @@ func (c *dockerClient) containerSlaverCreate(ctx context.Context, cnt core.Conta
 }
 
 func (c *dockerClient) ContainerId(ctx context.Context, name string) string {
-	list, err := c.Client.ContainerList(ctx, types.ContainerListOptions{All: true})
+	list, err := c.Client.ContainerList(ctx, dt.ContainerListOptions{All: true})
 	if err != nil {
 		return ""
 	}
@@ -159,21 +166,21 @@ func buildMasterHostConfig(cnt core.Container) *container.HostConfig {
 func buildSlaverHostConfig(master string, cnt core.Container) *container.HostConfig {
 	res := container.Resources{}
 
-	for k, r := range cnt.Resources {
+	for k, r := range cnt.Resources.Limits {
 		switch k {
-		case "cpu":
-			q, err := strconv.ParseInt(r[:len(r)-1], 9, 64)
+		case types.ResourceCPU:
+			q, err := types.ParseQuantity(k, r)
 			if err != nil {
 				log.Fatalf("cpu quota not recognized %v", r)
 			}
-			res.NanoCPUs = 1_000_000_000 * q / 1024
+			res.NanoCPUs = int64(1_000_000_000 * q / 1024)
 			break
-		case "memory":
-			q, err := strconv.ParseInt(r[:len(r)-2], 9, 64)
+		case types.ResourceMemory:
+			q, err := types.ParseQuantity(k, r)
 			if err != nil {
 				log.Fatalf("memory quota not recognized %v", r)
 			}
-			res.Memory = q * 1024 * 1204
+			res.Memory = int64(q * 1024 * 1204)
 			break
 		}
 	}
@@ -242,7 +249,7 @@ func (c *dockerClient) handleImagePull(ctx context.Context, cnt core.Container) 
 		//FIXME: check if present
 		fallthrough
 	case core.PullAlways:
-		out, err := c.Client.ImagePull(ctx, cnt.Image, types.ImagePullOptions{})
+		out, err := c.Client.ImagePull(ctx, cnt.Image, dt.ImagePullOptions{})
 		if err != nil {
 			return err
 		}
