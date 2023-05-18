@@ -159,29 +159,20 @@ loop:
 					panic("[handleWatchPods] Unknown Event Type received")
 				}
 			}
-
 		}
 	}
 	log.Printf("[handleWatchPods] %s: Watch close - %v total %v items received\n", k.name, types.PodObjectType, eventCount)
 	return nil
 }
 
-func (k *kubelet) handlePodCreate(pod *core.Pod) {
-	k.lock.Lock()
-	defer k.lock.Unlock()
+func (k *kubelet) createPod(pod *core.Pod) {
 
 	logger.KubeletLogger.Printf("New Pod %v bind to current node %v, start handle pod create on current machine\n", pod.UID, k.node.Name)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	k.createMasterContainer(ctx, pod)
 	k.createContainers(ctx, pod, pod.Spec.Containers)
-	go k.startWatchContainers(ctx, pod, pod.Spec.Containers)
-	pod.CancelWorker = cancel
-	pod.Status.Phase = core.PodRunning
-	_, _, err := k.podClient.Put(pod.UID, pod)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
+	go k.startWatchContainers(ctx, *pod)
 	// add pod to podManager
 	k.podManager.AddPod(pod)
 }
@@ -191,7 +182,7 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 	defer k.lock.Unlock()
 	old, found := k.podManager.GetPodByUID(pod.UID)
 	if !found {
-		k.handlePodCreate(pod)
+		k.createPod(pod)
 		return
 	}
 
@@ -199,18 +190,11 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 
 	up := containersNew(old.Spec.Containers, pod.Spec.Containers)
 	down := containersNew(pod.Spec.Containers, old.Spec.Containers)
-	if len(up) == 0 && len(down) == 0 {
-		pod.CancelWorker = old.CancelWorker
-		k.podManager.UpdatePod(pod)
-	} else {
-		old.CancelWorker()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		pod.CancelWorker = cancel
-		k.removeContainers(ctx, pod, down)
-		k.createContainers(ctx, pod, up)
-		k.podManager.UpdatePod(pod)
-	}
+	ctx := context.Background()
+	k.removeContainers(ctx, pod, down)
+	k.createContainers(ctx, pod, up)
+	go k.startWatchContainers(ctx, *pod)
 }
 
 func (k *kubelet) handlePodDelete(pod *core.Pod) {
@@ -219,8 +203,11 @@ func (k *kubelet) handlePodDelete(pod *core.Pod) {
 
 	logger.KubeletLogger.Printf("Pod %v delete on current node %v, start handle pod delete\n", pod.UID, k.node.Name)
 
-	old, _ := k.podManager.GetPodByUID(pod.UID)
-	old.CancelWorker()
+	old, find := k.podManager.GetPodByUID(pod.UID)
+	if !find {
+		log.Println("unconsistent delete")
+		return
+	}
 	ctx := context.Background()
 	k.removeContainers(ctx, old, old.Spec.Containers)
 	k.removeMasterContainer(ctx, pod)
@@ -317,57 +304,47 @@ func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
 	}
 }
 
-func (k *kubelet) startWatchContainers(ctx context.Context, pod *core.Pod, containers []core.Container) {
-	log.Println("start watch {}", pod.UID)
-	stopped := make(map[string]bool)
-	for _, c := range containers {
-		stopped[c.Name] = false
+func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
+	time.Sleep(time.Second)
+	pod.Status.Phase = core.PodRunning
+	log.Println("start watch ", pod.UID)
+	pod.Status.ContainerStatuses = make([]core.ContainerStatus, 0)
+	for _, container := range pod.Spec.Containers {
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, core.ContainerStatus{
+			Name: container.Name,
+			State: core.ContainerState{
+				Waiting:    nil,
+				Running:    &core.ContainerStateRunning{},
+				Terminated: nil,
+			},
+			Image:       container.Image,
+			ImageID:     container.Image,
+			ContainerID: k.criClient.ContainerId(ctx, container.Name),
+		})
 	}
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("stop watch {} ", pod.UID)
-			return
-		default:
-			k.lock.Lock()
-			changed := false
-			for _, c := range containers {
-				if !stopped[c.Name] {
-					r, err := k.criClient.ContainerInspect(ctx, createPodContainerName(pod, c))
-					if err != nil {
-						log.Println(err.Error())
-						stopped[c.Name] = true
-						changed = true
-					}
-					if !r {
-						stopped[c.Name] = true
-						changed = true
-					}
+	for idx, c := range pod.Status.ContainerStatuses {
+		if c.State.Running != nil {
+			r, err := k.criClient.ContainerInspect(ctx, c.ContainerID)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			if !r || err != nil {
+				pod.Status.ContainerStatuses[idx].State = core.ContainerState{
+					Terminated: &core.ContainerStateTerminated{
+						ExitCode:    0,
+						Signal:      0,
+						Reason:      "",
+						Message:     "",
+						ContainerID: c.ContainerID,
+					},
 				}
 			}
-			if changed {
-				for idx, c := range pod.Status.ContainerStatuses {
-					if stopped[c.Name] {
-						pod.Status.ContainerStatuses[idx].State = core.ContainerState{Terminated: &core.ContainerStateTerminated{
-							ExitCode:    0,
-							Signal:      0,
-							Reason:      "",
-							Message:     "",
-							ContainerID: c.ContainerID,
-						}}
-					}
-				}
-				obj, err := k.podClient.Get(pod.UID)
-				tp := obj.(*core.Pod)
-				pod.ObjectMeta = tp.ObjectMeta
-				_, _, err = k.podClient.Put(pod.UID, pod)
-				if err != nil {
-					log.Println(err.Error())
-				}
-			}
-			k.lock.Unlock()
-			time.Sleep(time.Second)
 		}
 	}
+	_, _, err := k.podClient.Put(pod.UID, &pod)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	log.Println("stop watch ", pod.UID)
 
 }
