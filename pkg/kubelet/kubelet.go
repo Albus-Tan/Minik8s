@@ -324,7 +324,7 @@ func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
 }
 
 func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 	pod.Status.Phase = core.PodRunning
 	ip, err := k.criClient.ContainerIP(ctx, k.criClient.ContainerId(ctx, pod.UID+"-"+"pause"))
 
