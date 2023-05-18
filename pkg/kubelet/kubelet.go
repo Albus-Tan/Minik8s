@@ -262,7 +262,7 @@ func makePodContainerName(pod *core.Pod, container core.Container) string {
 func (k *kubelet) createMasterContainer(ctx context.Context, pod *core.Pod) {
 	container := constants.InitialPauseContainer
 	container.Name = makePodContainerName(pod, container)
-	mid, err := k.criClient.ContainerCreate(ctx, container)
+	_, err := k.criClient.ContainerCreate(ctx, container)
 	if err != nil {
 		log.Fatalf("create failed")
 	}
@@ -270,13 +270,6 @@ func (k *kubelet) createMasterContainer(ctx context.Context, pod *core.Pod) {
 	if err := k.criClient.ContainerStart(ctx, container.Name); err != nil {
 		log.Fatalf("run failed")
 	}
-
-	ip, err := k.criClient.ContainerIP(ctx, mid)
-
-	if err != nil {
-		log.Fatalf("get pause ip failed")
-	}
-	pod.Status.PodIP = ip
 }
 
 func (k *kubelet) createContainers(ctx context.Context, pod *core.Pod, containers []core.Container) {
@@ -333,6 +326,13 @@ func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
 func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 	time.Sleep(time.Second)
 	pod.Status.Phase = core.PodRunning
+	ip, err := k.criClient.ContainerIP(ctx, k.criClient.ContainerId(ctx, pod.UID+"-"+"pause"))
+
+	if err != nil {
+		log.Fatalf("get pause ip failed")
+	}
+	pod.Status.PodIP = ip
+
 	log.Println("start watch ", pod.UID)
 	pod.Status.ContainerStatuses = make([]core.ContainerStatus, 0)
 	for _, container := range pod.Spec.Containers {
@@ -368,7 +368,7 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 			}
 		}
 	}
-	_, _, err := k.podClient.Put(pod.UID, &pod)
+	_, _, err = k.podClient.Put(pod.UID, &pod)
 	if err != nil {
 		log.Println(err.Error())
 	}
