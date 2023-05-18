@@ -7,7 +7,7 @@ import (
 )
 
 const defaultProtocol = 6
-const defaultSchedName = "wlc"
+const defaultSchedName = "rr"
 const defaultNetmask = 0xFF_FF_FF_FF
 const defaultAddressFamily = 2
 
@@ -109,6 +109,7 @@ func RegPodToService(service core.Service, pod core.Pod) error {
 					Address:       net.ParseIP(pod.Status.PodIP),
 					Port:          ps[idx],
 					AddressFamily: defaultAddressFamily,
+					Weight:        1,
 				})
 				if err != nil {
 					return err
