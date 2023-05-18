@@ -65,6 +65,8 @@ func CreateApiObject(ty types.ApiObjectType) IApiObject {
 		return &HorizontalPodAutoscaler{}
 	case types.ErrorObjectType:
 		return &ErrorApiObject{}
+	case types.JobObjectType:
+		return &Job{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -83,6 +85,8 @@ func CreateApiObjectList(ty types.ApiObjectType) IApiObjectList {
 		return &ReplicaSetList{}
 	case types.HorizontalPodAutoscalerObjectType:
 		return &HorizontalPodAutoscalerList{}
+	case types.JobObjectType:
+		return &JobList{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -101,6 +105,8 @@ func CreateApiObjectStatus(ty types.ApiObjectType) IApiObjectStatus {
 		return &ReplicaSetStatus{}
 	case types.HorizontalPodAutoscalerObjectType:
 		return &HorizontalPodAutoscalerStatus{}
+	case types.JobObjectType:
+		return &JobStatus{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -119,6 +125,8 @@ func GetApiObjectsURL(ty types.ApiObjectType) string {
 		return api.ReplicaSetsURL
 	case types.HorizontalPodAutoscalerObjectType:
 		return api.HorizontalPodAutoscalersURL
+	case types.JobObjectType:
+		return api.JobsURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -136,6 +144,8 @@ func GetWatchApiObjectsURL(ty types.ApiObjectType) string {
 		return api.WatchReplicaSetsURL
 	case types.HorizontalPodAutoscalerObjectType:
 		return api.WatchHorizontalPodAutoscalersURL
+	case types.JobObjectType:
+		return api.WatchJobsURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}

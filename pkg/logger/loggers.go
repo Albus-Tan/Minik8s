@@ -10,6 +10,7 @@ var ControllerManagerLogger Logger
 var ReplicaSetControllerLogger Logger
 var HorizontalControllerLogger Logger
 var SchedulerLogger Logger
+var GpuServerLogger Logger
 var KubectlLogger Logger
 var KubeletLogger Logger
 
@@ -22,4 +23,5 @@ func init() {
 	SchedulerLogger = utils.NewComponentLogger("Scheduler")
 	KubectlLogger = utils.NewComponentLogger("Kubectl")
 	KubeletLogger = utils.NewComponentLogger("Kubelet")
+	GpuServerLogger = utils.NewComponentLogger("GpuServer")
 }

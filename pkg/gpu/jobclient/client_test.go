@@ -1,4 +1,4 @@
-package sshclient
+package jobclient
 
 import (
 	"context"
@@ -7,9 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
-func Test_sshClient_SubmitJob(t *testing.T) {
+func Test_jobClient_SubmitJob(t *testing.T) {
 	cli := New()
 	ctx, cancel := context.WithCancel(context.Background())
 	cli.Run(ctx)
@@ -23,5 +24,11 @@ func Test_sshClient_SubmitJob(t *testing.T) {
 		return
 	}
 	log.Printf("Job id %s\n", id)
-
+	isFinished, _ := cli.CheckJobFinish(id)
+	for !isFinished {
+		isFinished, _ = cli.CheckJobFinish(id)
+		log.Printf("Job id %s not finished\n", id)
+		time.Sleep(time.Second * 3)
+	}
+	log.Printf("Job id %s finished\n", id)
 }

@@ -18,6 +18,7 @@ const (
 	ReplicasetObjectType              ApiObjectType = "ReplicaSet"
 	HorizontalPodAutoscalerObjectType ApiObjectType = "HorizontalPodAutoscaler"
 	NodeObjectType                    ApiObjectType = "Node"
+	JobObjectType                     ApiObjectType = "Job"
 )
 
 // ResourceName is the name identifying various resources in a ResourceList.
