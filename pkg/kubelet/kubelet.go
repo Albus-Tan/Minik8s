@@ -74,6 +74,8 @@ func (k *kubelet) Run() {
 	// start cadvisor on current node
 	k.startCadvisorClient()
 
+	k.listPods(ctx)
+
 	// start watch pods
 	k.watchPods(ctx)
 }
@@ -92,6 +94,23 @@ func (k *kubelet) startCadvisorClient() {
 var (
 	errorStopRequested = errors.New("stop requested")
 )
+
+func (k *kubelet) listPods(ctx context.Context) {
+
+	log.Printf("[Kubelet] Start list pods\n")
+
+	podList, err := k.podListerWatcher.List()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	for _, p := range podList.GetIApiObjectArr() {
+		k.podManager.UpdatePod(p.(*core.Pod))
+	}
+	for _, p := range podList.GetIApiObjectArr() {
+		go k.startWatchContainers(ctx, *p.(*core.Pod))
+	}
+}
 
 func (k *kubelet) watchPods(ctx context.Context) {
 
@@ -165,18 +184,6 @@ loop:
 	return nil
 }
 
-func (k *kubelet) createPod(pod *core.Pod) {
-
-	logger.KubeletLogger.Printf("New Pod %v bind to current node %v, start handle pod create on current machine\n", pod.UID, k.node.Name)
-
-	ctx := context.Background()
-	k.createMasterContainer(ctx, pod)
-	k.createContainers(ctx, pod, pod.Spec.Containers)
-	go k.startWatchContainers(ctx, *pod)
-	// add pod to podManager
-	k.podManager.AddPod(pod)
-}
-
 func (k *kubelet) handlePodModify(pod *core.Pod) {
 	k.lock.Lock()
 	defer k.lock.Unlock()
@@ -218,6 +225,18 @@ func (k *kubelet) handlePodDelete(pod *core.Pod) {
 
 /*----------------------------  ----------------------------*/
 
+func (k *kubelet) createPod(pod *core.Pod) {
+
+	logger.KubeletLogger.Printf("New Pod %v bind to current node %v, start handle pod create on current machine\n", pod.UID, k.node.Name)
+
+	ctx := context.Background()
+	k.createMasterContainer(ctx, pod)
+	k.createContainers(ctx, pod, pod.Spec.Containers)
+	go k.startWatchContainers(ctx, *pod)
+	// add pod to podManager
+	k.podManager.AddPod(pod)
+}
+
 func containersNew(old []core.Container, new []core.Container) []core.Container {
 	set := make(map[string]core.Container)
 	for _, c := range new {
@@ -236,13 +255,13 @@ func containersNew(old []core.Container, new []core.Container) []core.Container 
 	return ret
 }
 
-func createPodContainerName(pod *core.Pod, container core.Container) string {
+func makePodContainerName(pod *core.Pod, container core.Container) string {
 	return pod.UID + "-" + container.Name
 }
 
 func (k *kubelet) createMasterContainer(ctx context.Context, pod *core.Pod) {
 	container := constants.InitialPauseContainer
-	container.Name = createPodContainerName(pod, container)
+	container.Name = makePodContainerName(pod, container)
 	_, err := k.criClient.ContainerCreate(ctx, container)
 	if err != nil {
 		log.Fatalf("create failed")
@@ -256,8 +275,8 @@ func (k *kubelet) createMasterContainer(ctx context.Context, pod *core.Pod) {
 func (k *kubelet) createContainers(ctx context.Context, pod *core.Pod, containers []core.Container) {
 	for _, container := range containers {
 		name := container.Name
-		container.Name = createPodContainerName(pod, container)
-		container.Master = k.criClient.ContainerId(ctx, createPodContainerName(pod, constants.InitialPauseContainer))
+		container.Name = makePodContainerName(pod, container)
+		container.Master = k.criClient.ContainerId(ctx, makePodContainerName(pod, constants.InitialPauseContainer))
 		if container.Master == "" {
 			log.Fatalf("MissingMaster")
 		}
@@ -284,8 +303,8 @@ func (k *kubelet) createContainers(ctx context.Context, pod *core.Pod, container
 
 func (k *kubelet) removeContainers(ctx context.Context, pod *core.Pod, containers []core.Container) {
 	for _, container := range containers {
-		container.Name = createPodContainerName(pod, container)
-		container.Master = createPodContainerName(pod, constants.InitialPauseContainer)
+		container.Name = makePodContainerName(pod, container)
+		container.Master = makePodContainerName(pod, constants.InitialPauseContainer)
 		err := k.criClient.ContainerRemove(ctx, container.Name)
 		if err != nil {
 			log.Println("[ERROR]: failed to remove container", container.Name, err.Error())
@@ -296,7 +315,7 @@ func (k *kubelet) removeContainers(ctx context.Context, pod *core.Pod, container
 func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
 	err := k.criClient.ContainerRemove(
 		ctx,
-		createPodContainerName(pod, constants.InitialPauseContainer),
+		makePodContainerName(pod, constants.InitialPauseContainer),
 	)
 
 	if err != nil {
@@ -305,8 +324,15 @@ func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
 }
 
 func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 	pod.Status.Phase = core.PodRunning
+	ip, err := k.criClient.ContainerIP(ctx, k.criClient.ContainerId(ctx, pod.UID+"-"+"pause"))
+
+	if err != nil {
+		log.Fatalf("get pause ip failed")
+	}
+	pod.Status.PodIP = ip
+
 	log.Println("start watch ", pod.UID)
 	pod.Status.ContainerStatuses = make([]core.ContainerStatus, 0)
 	for _, container := range pod.Spec.Containers {
@@ -319,12 +345,12 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 			},
 			Image:       container.Image,
 			ImageID:     container.Image,
-			ContainerID: k.criClient.ContainerId(ctx, container.Name),
+			ContainerID: k.criClient.ContainerId(ctx, pod.UID+"-"+container.Name),
 		})
 	}
 	for idx, c := range pod.Status.ContainerStatuses {
 		if c.State.Running != nil {
-			r, err := k.criClient.ContainerInspect(ctx, c.ContainerID)
+			r, err := k.criClient.ContainerIsRunning(ctx, c.ContainerID)
 			if err != nil {
 				log.Println(err.Error())
 			}
@@ -338,10 +364,11 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 						ContainerID: c.ContainerID,
 					},
 				}
+
 			}
 		}
 	}
-	_, _, err := k.podClient.Put(pod.UID, &pod)
+	_, _, err = k.podClient.Put(pod.UID, &pod)
 	if err != nil {
 		log.Println(err.Error())
 	}

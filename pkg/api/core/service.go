@@ -177,17 +177,17 @@ const (
 
 	// ServiceTypeNodePort means a service will be exposed on one port of
 	// every node, in addition to 'ClusterIP' type.
-	ServiceTypeNodePort ServiceType = "NodePort"
+	//ServiceTypeNodePort ServiceType = "NodePort"
 
 	// ServiceTypeLoadBalancer means a service will be exposed via an
 	// external load balancer (if the cloud provider supports it), in addition
 	// to 'NodePort' type.
-	ServiceTypeLoadBalancer ServiceType = "LoadBalancer"
+	//ServiceTypeLoadBalancer ServiceType = "LoadBalancer"
 
 	// ServiceTypeExternalName means a service consists of only a reference to
 	// an external name that kubedns or equivalent will return as a CNAME
 	// record, with no exposing or proxying of any pods involved.
-	ServiceTypeExternalName ServiceType = "ExternalName"
+	//ServiceTypeExternalName ServiceType = "ExternalName"
 )
 
 // ServicePort contains information on service's port.
@@ -204,7 +204,7 @@ type ServicePort struct {
 	// Default is TCP.
 	// +default="TCP"
 	// +optional
-	Protocol Protocol `json:"protocol,omitempty" protobuf:"bytes,2,opt,name=protocol,casttype=Protocol"`
+	//Protocol Protocol `json:"protocol,omitempty" protobuf:"bytes,2,opt,name=protocol,casttype=Protocol"`
 
 	// The port that will be exposed by this service.
 	Port int32 `json:"port" protobuf:"varint,3,opt,name=port"`
@@ -230,7 +230,7 @@ type ServicePort struct {
 	// from NodePort to ClusterIP).
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
 	// +optional
-	NodePort int32 `json:"nodePort,omitempty" protobuf:"varint,5,opt,name=nodePort"`
+	//NodePort int32 `json:"nodePort,omitempty" protobuf:"varint,5,opt,name=nodePort"`
 }
 
 // ServiceStatus represents the current status of a service.
