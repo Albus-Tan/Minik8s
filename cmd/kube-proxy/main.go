@@ -1,21 +1,8 @@
 package main
 
-import (
-	"log"
-
-	"github.com/moby/ipvs"
-)
+import "minik8s/pkg/kubeproxy"
 
 func main() {
-	handle, err := ipvs.New("")
-	if err != nil {
-		log.Fatalf("ipvs.New: %s", err)
-	}
-	svcs, err := handle.GetServices()
-	if err != nil {
-		log.Fatalf("handle.GetServices: %s", err)
-	}
-	for _, svc := range svcs {
-		println(svc.Port)
-	}
+	k := kubeproxy.New()
+	k.Run()
 }

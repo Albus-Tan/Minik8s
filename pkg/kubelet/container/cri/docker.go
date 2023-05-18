@@ -34,12 +34,19 @@ func (c *dockerClient) ContainerStart(ctx context.Context, name string) error {
 	return c.Client.ContainerStart(ctx, c.ContainerId(ctx, name), dt.ContainerStartOptions{})
 }
 
-func (c *dockerClient) ContainerInspect(ctx context.Context, id string) (bool, error) {
+func (c *dockerClient) ContainerIsRunning(ctx context.Context, id string) (bool, error) {
 	resp, err := c.Client.ContainerInspect(ctx, id)
 	if err != nil {
 		return false, err
 	}
 	return resp.State.Running, nil
+}
+func (c *dockerClient) ContainerIP(ctx context.Context, id string) (string, error) {
+	resp, err := c.Client.ContainerInspect(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return resp.NetworkSettings.IPAddress, nil
 }
 
 func soundClose(cli *client.Client) {
@@ -74,7 +81,7 @@ func (c *dockerClient) containerMasterCreate(ctx context.Context, cnt core.Conta
 		return "", err
 	}
 	resp, err := c.Client.ContainerCreate(ctx, buildMasterContainerConfig(cnt), buildMasterHostConfig(cnt), nil, nil, cnt.Name)
-	if err == nil {
+	if err != nil {
 		return "", err
 	}
 	return resp.ID, nil
