@@ -3,6 +3,7 @@ package gpu
 import (
 	"context"
 	"errors"
+	"fmt"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
@@ -68,7 +69,7 @@ func (s *server) Run(ctx context.Context, cancel context.CancelFunc) {
 
 }
 
-const jobStateCheckInterval = 10 * time.Second
+const jobStateCheckInterval = 30 * time.Second
 
 func (s *server) periodicallyCheckJobState() {
 	for {
@@ -278,7 +279,8 @@ loop:
 }
 
 func (s *server) submitJob(job *core.Job) (jobId string, err error) {
-	jobId, err = s.cli.SubmitCudaJob(job.UID, job.Spec.CuFilePath, job.Spec.SlurmFilePath, job.Spec.ResultFileName)
+	slurmFile := GenerateJobScript(job)
+	jobId, err = s.cli.SubmitCudaJob(job.UID, job.Spec.CuFilePath, slurmFile, job.Spec.ResultFileName)
 	return jobId, err
 }
 
@@ -332,4 +334,54 @@ func (s *server) downloadJobResult(job *core.Job) (downloaded bool, err error) {
 		retry += 1
 	}
 	return downloaded, err
+}
+
+func GenerateJobScript(job *core.Job) string {
+	template := `#!/bin/bash
+#SBATCH --job-name=%s
+#SBATCH --partition=dgx2
+#SBATCH --output=%s.out
+#SBATCH --error=%s.err
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=%d
+#SBATCH --cpus-per-task=%d
+#SBATCH --gres=gpu:%d
+
+ulimit -s unlimited
+ulimit -l unlimited
+
+module load gcc/8.3.0 cuda/10.1.243-gcc-8.3.0
+
+./%s
+`
+	numTasksPerNode := 0
+	if job.Spec.Args.NumTasksPerNode != 0 {
+		numTasksPerNode = job.Spec.Args.NumTasksPerNode
+	} else {
+		numTasksPerNode = 1
+	}
+	cpusPerTask := 0
+	if job.Spec.Args.CpusPerTask != 0 {
+		cpusPerTask = job.Spec.Args.CpusPerTask
+	} else {
+		cpusPerTask = 1
+	}
+	gpuResources := 0
+	if job.Spec.Args.GpuResources != 0 {
+		gpuResources = job.Spec.Args.GpuResources
+	} else {
+		gpuResources = 1
+	}
+
+	script := fmt.Sprintf(
+		template,
+		job.UID,
+		job.Spec.ResultFileName,
+		job.Spec.ResultFileName,
+		numTasksPerNode,
+		cpusPerTask,
+		gpuResources,
+		job.Spec.ResultFileName,
+	)
+	return script
 }

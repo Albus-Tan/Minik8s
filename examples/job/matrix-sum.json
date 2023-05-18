@@ -7,8 +7,11 @@
   },
   "spec": {
     "cuFilePath": "D:\\SJTU\\Minik8s\\minik8s\\pkg\\gpu\\cuda\\sum_matrix\\sum_matrix.cu",
-    "slurmFilePath": "D:\\SJTU\\Minik8s\\minik8s\\pkg\\gpu\\cuda\\sum_matrix\\sum_matrix.slurm",
     "resultFileName": "sum_matrix",
-    "resultFilePath": "D:\\SJTU\\Minik8s\\minik8s\\pkg\\gpu\\cuda\\sum_matrix"
+    "resultFilePath": "D:\\SJTU\\Minik8s\\minik8s\\pkg\\gpu\\cuda\\sum_matrix",
+    "args": {
+      "numTasksPerNode": 1,
+      "cpusPerTask": 2
+    }
   }
 }

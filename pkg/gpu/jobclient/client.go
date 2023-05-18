@@ -11,15 +11,15 @@ import (
 	"minik8s/pkg/api/core"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type Interface interface {
 	Run(ctx context.Context)
-	SubmitCudaJob(jobUID string, cuFilePath string, slurmFilePath string, objectFileName string) (jobId string, err error)
+	SubmitCudaJob(jobUID string, cuFilePath string, slurmFileContent string, objectFileName string) (jobId string, err error)
 	CheckJobFinish(jobId string) (bool, error)
 	GetJobState(jobId string) (string, error)
 	DownloadResult(jobUID string, localFilePath string, resultFileName string) (bool, error)
+	CreateAndWriteFile(filePath string, content string) error
 }
 
 type jobClient struct {
@@ -103,12 +103,12 @@ func (c *jobClient) DownloadResult(jobUID string, localFilePath string, resultFi
 	return true, nil
 }
 
-func (c *jobClient) SubmitCudaJob(jobUID string, cuFilePath string, slurmFilePath string, objectFileName string) (jobId string, err error) {
+func (c *jobClient) SubmitCudaJob(jobUID string, cuFilePath string, slurmFileContent string, objectFileName string) (jobId string, err error) {
 
 	dirName := config.HPCJobDirPrefix + jobUID
 	fullDirName := config.HPCHomeDir + dirName
 	cuFileName := filepath.Base(cuFilePath)
-	slurmFileName := filepath.Base(slurmFilePath)
+	slurmFileName := strings.TrimSuffix(cuFileName, config.CuFileSuffix) + config.SlurmFileSuffix
 	cuFileDstPath := filepath.ToSlash(filepath.Join(fullDirName, cuFileName))
 	slurmFileDstPath := filepath.ToSlash(filepath.Join(fullDirName, slurmFileName))
 	objectFileDstPath := filepath.ToSlash(filepath.Join(fullDirName, objectFileName))
@@ -125,9 +125,9 @@ func (c *jobClient) SubmitCudaJob(jobUID string, cuFilePath string, slurmFilePat
 		return "-1", err
 	}
 
-	err = c.upload(slurmFilePath, slurmFileDstPath)
+	err = c.CreateAndWriteFile(slurmFileDstPath, slurmFileContent)
 	if err != nil {
-		log.Printf("[jobClient] SubmitCudaJob upload file %v to %v err: %v\n", slurmFilePath, slurmFileDstPath, err)
+		log.Printf("[jobClient] SubmitCudaJob writing slurm script to %v err: %v\n", slurmFileDstPath, err)
 		return "-1", err
 	}
 
@@ -196,13 +196,44 @@ func (c *jobClient) executeCommand(cmd string) ([]byte, error) {
 	return c.client.Run(cmd)
 }
 
+func (c *jobClient) createFile(fullPath string) (*sftp.File, error) {
+	return c.sftpc.Create(fullPath)
+}
+
+func (c *jobClient) writeFile(file *sftp.File, content string) error {
+	_, err := file.Write([]byte(content))
+	return err
+}
+
+func (c *jobClient) closeFile(file *sftp.File) error {
+	return file.Close()
+}
+
+func (c *jobClient) CreateAndWriteFile(filePath string, content string) error {
+	file, err := c.createFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	err = c.writeFile(file, content)
+	if err != nil {
+		return err
+	}
+
+	err = c.closeFile(file)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *jobClient) executeCommandsAndGetLastOutput(cmds []string) (out []byte, err error) {
 	for _, cmd := range cmds {
 		out, err = c.executeCommand(cmd)
 		if err != nil {
 			return nil, err
 		}
-		time.Sleep(time.Second)
 	}
 	return out, nil
 }

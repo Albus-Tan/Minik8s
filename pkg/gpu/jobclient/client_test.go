@@ -17,9 +17,25 @@ func Test_jobClient_SubmitJob(t *testing.T) {
 	defer cancel()
 
 	path, _ := os.Getwd()
-	path1 := filepath.Join(path, "../cuda/sum_matrix/sum_matrix.cu")
-	path2 := filepath.Join(path, "../cuda/sum_matrix/sum_matrix.slurm")
-	id, err := cli.SubmitCudaJob(utils.GenerateUID(), path1, path2, "sum_matrix")
+	path = filepath.Join(path, "../cuda/sum_matrix/sum_matrix.cu")
+	content := `#!/bin/bash
+#SBATCH --job-name=Test_jobClient_SubmitJob
+#SBATCH --partition=dgx2
+#SBATCH --output=sum_matrix.out
+#SBATCH --error=sum_matrix.err
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --gres=gpu:1
+
+ulimit -s unlimited
+ulimit -l unlimited
+
+module load gcc/8.3.0 cuda/10.1.243-gcc-8.3.0
+
+./sum_matrix
+`
+	id, err := cli.SubmitCudaJob(utils.GenerateUID(), path, content, "sum_matrix")
 	if err != nil {
 		return
 	}

@@ -92,10 +92,16 @@ func (j *Job) DeleteOwnerReference(uid types.UID) {
 }
 
 type JobSpec struct {
-	CuFilePath     string `json:"cuFilePath,omitempty"`
-	SlurmFilePath  string `json:"slurmFilePath,omitempty"`
-	ResultFileName string `json:"resultFileName,omitempty"`
-	ResultFilePath string `json:"resultFilePath,omitempty"`
+	CuFilePath     string  `json:"cuFilePath,omitempty"`
+	ResultFileName string  `json:"resultFileName,omitempty"`
+	ResultFilePath string  `json:"resultFilePath,omitempty"`
+	Args           JobArgs `json:"args,omitempty"`
+}
+
+type JobArgs struct {
+	NumTasksPerNode int `json:"numTasksPerNode,omitempty"`
+	CpusPerTask     int `json:"cpusPerTask,omitempty"`
+	GpuResources    int `json:"gpuResources,omitempty"`
 }
 
 type JobStatus struct {

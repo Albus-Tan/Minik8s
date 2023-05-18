@@ -48,4 +48,6 @@ const (
 	HPCHomeDir       = "/lustre/home/acct-stu/stu1653/"
 	OutputFileSuffix = ".out"
 	ErrorFileSuffix  = ".err"
+	SlurmFileSuffix  = ".slurm"
+	CuFileSuffix     = ".cu"
 )
