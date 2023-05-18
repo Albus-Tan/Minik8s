@@ -7,7 +7,9 @@ require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/cadvisor v0.47.1
 	github.com/google/uuid v1.3.0
+	github.com/melbahja/goph v1.3.1
 	github.com/moby/ipvs v1.1.0
+	github.com/pkg/sftp v1.13.5
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	go.etcd.io/etcd/api/v3 v3.5.8
@@ -40,6 +42,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/leodido/go-urn v1.2.3 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-isatty v0.0.18 // indirect

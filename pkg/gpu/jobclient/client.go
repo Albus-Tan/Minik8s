@@ -11,14 +11,15 @@ import (
 	"minik8s/pkg/api/core"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Interface interface {
 	Run(ctx context.Context)
-	SubmitCudaJob(name string, cuFilePath string, slurmFilePath string, objectFileName string) (jobId string, err error)
+	SubmitCudaJob(jobUID string, cuFilePath string, slurmFilePath string, objectFileName string) (jobId string, err error)
 	CheckJobFinish(jobId string) (bool, error)
 	GetJobState(jobId string) (string, error)
-	DownloadResult(jobId string, localFilePath string) (bool, error)
+	DownloadResult(jobUID string, localFilePath string, resultFileName string) (bool, error)
 }
 
 type jobClient struct {
@@ -81,15 +82,30 @@ func (c *jobClient) GetJobState(jobId string) (string, error) {
 	return string(core.JobMissing), errors.New(fmt.Sprintf("Job %s not found\n", jobId))
 }
 
-func (c *jobClient) DownloadResult(jobId string, localFilePath string) (bool, error) {
-	// TODO
-	panic("implement me")
+func (c *jobClient) DownloadResult(jobUID string, localFilePath string, resultFileName string) (bool, error) {
+
+	dirName := config.HPCJobDirPrefix + jobUID
+	fullDirName := config.HPCHomeDir + dirName
+	resultFileOutputName := resultFileName + config.OutputFileSuffix
+	resultFileErrorName := resultFileName + config.ErrorFileSuffix
+	resultFileOutputDstPath := filepath.ToSlash(filepath.Join(fullDirName, resultFileOutputName))
+	resultFileErrorDstPath := filepath.ToSlash(filepath.Join(fullDirName, resultFileErrorName))
+
+	err := c.download(filepath.Join(localFilePath, resultFileOutputName), resultFileOutputDstPath)
+	if err != nil {
+		return false, err
+	}
+	err = c.download(filepath.Join(localFilePath, resultFileErrorName), resultFileErrorDstPath)
+	if err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
 
-func (c *jobClient) SubmitCudaJob(name string, cuFilePath string, slurmFilePath string, objectFileName string) (jobId string, err error) {
+func (c *jobClient) SubmitCudaJob(jobUID string, cuFilePath string, slurmFilePath string, objectFileName string) (jobId string, err error) {
 
-	dirName := config.HPCJobDirPrefix + name
+	dirName := config.HPCJobDirPrefix + jobUID
 	fullDirName := config.HPCHomeDir + dirName
 	cuFileName := filepath.Base(cuFilePath)
 	slurmFileName := filepath.Base(slurmFilePath)
@@ -115,11 +131,8 @@ func (c *jobClient) SubmitCudaJob(name string, cuFilePath string, slurmFilePath 
 		return "-1", err
 	}
 
-	cmds := []string{
-		fmt.Sprintf("module load gcc/8.3.0 cuda/10.1.243-gcc-8.3.0 && nvcc %s -o %s -lcublas", cuFileDstPath, objectFileDstPath),
-		fmt.Sprintf("sbatch %s", slurmFileDstPath),
-	}
-	res, err = c.executeCommandsAndGetLastOutput(cmds)
+	cmd := fmt.Sprintf("module load gcc/8.3.0 cuda/10.1.243-gcc-8.3.0 && nvcc %s -o %s -lcublas && sbatch %s", cuFileDstPath, objectFileDstPath, slurmFileDstPath)
+	res, err = c.executeCommand(cmd)
 	if err != nil {
 		log.Printf("[jobClient] SubmitCudaJob executeCommandsAndGetLastOutput err: %v\n", err)
 		return "-1", err
@@ -189,6 +202,7 @@ func (c *jobClient) executeCommandsAndGetLastOutput(cmds []string) (out []byte, 
 		if err != nil {
 			return nil, err
 		}
+		time.Sleep(time.Second)
 	}
 	return out, nil
 }

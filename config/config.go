@@ -43,7 +43,9 @@ func CadvisorUrl(HostAddress string) string {
 /*--------------- GPU ---------------*/
 // HPC config
 const (
-	PiHost          = "pilogin.hpc.sjtu.edu.cn"
-	HPCJobDirPrefix = "job-"
-	HPCHomeDir      = "/lustre/home/acct-stu/stu1653/"
+	PiHost           = "pilogin.hpc.sjtu.edu.cn"
+	HPCJobDirPrefix  = "job-"
+	HPCHomeDir       = "/lustre/home/acct-stu/stu1653/"
+	OutputFileSuffix = ".out"
+	ErrorFileSuffix  = ".err"
 )

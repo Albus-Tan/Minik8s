@@ -32,3 +32,28 @@ func Test_jobClient_SubmitJob(t *testing.T) {
 	}
 	log.Printf("Job id %s finished\n", id)
 }
+
+//func Test_jobClient_DownloadResult(t *testing.T) {
+//
+//	var jobUID = "57ec0192-cd65-4d69-9cfa-399683e8e9b8"
+//
+//	cli := New()
+//	ctx, cancel := context.WithCancel(context.Background())
+//	cli.Run(ctx)
+//	defer cancel()
+//
+//	path, _ := os.Getwd()
+//	path = filepath.Join(path, "../cuda/sum_matrix")
+//
+//	result, err := cli.DownloadResult(jobUID, path, "sum_matrix")
+//	if err != nil {
+//		log.Printf("err: %s\n", err)
+//		return
+//	}
+//
+//	if result {
+//		log.Printf("DownloadResult success\n")
+//	} else {
+//		log.Printf("DownloadResult failed\n")
+//	}
+//}

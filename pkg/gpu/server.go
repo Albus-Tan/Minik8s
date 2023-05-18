@@ -61,6 +61,70 @@ func (s *server) Run(ctx context.Context, cancel context.CancelFunc) {
 		s.runJobWorker(ctx)
 	}()
 
+	go func() {
+		defer cancel()
+		s.periodicallyCheckJobState()
+	}()
+
+}
+
+const jobStateCheckInterval = 10 * time.Second
+
+func (s *server) periodicallyCheckJobState() {
+	for {
+		logger.GpuServerLogger.Printf("[periodicallyCheckJobState] check start\n")
+
+		time.Sleep(jobStateCheckInterval)
+		jobList, err := s.jobListWatcher.List()
+		if err != nil {
+			logger.GpuServerLogger.Printf("[periodicallyCheckJobState] jobListWatcher list failed\n")
+			continue
+		}
+
+		jobs := jobList.GetIApiObjectArr()
+		logger.GpuServerLogger.Printf("[periodicallyCheckJobState] %v jobs to check in apiserver storage\n", len(jobs))
+		for i, item := range jobs {
+			job := item.(*core.Job)
+			jobID := job.Status.JobID
+			if jobID == "" {
+				logger.GpuServerLogger.Printf("[periodicallyCheckJobState] job %v do not have JobID now\n", i)
+				continue
+			}
+
+			if core.JobFinished(job.Status.State) {
+				logger.GpuServerLogger.Printf("[periodicallyCheckJobState] job %v, JobID %v has already done, state %v\n", i, jobID, job.Status.State)
+				continue
+			}
+
+			jobState, err := s.cli.GetJobState(jobID)
+			logger.GpuServerLogger.Printf("[periodicallyCheckJobState] job %v, JobID %v, state %v\n", i, jobID, jobState)
+			if jobState == "" || jobState == string(core.JobMissing) || jobState == string(job.Status.State) {
+				logger.GpuServerLogger.Printf("[periodicallyCheckJobState] job %v state not found or unchange\n", i)
+				continue
+			}
+
+			job.Status.State = core.JobState(jobState)
+
+			// send binding result to apiserver
+			code, _, err := s.jobClient.Put(job.UID, job)
+			if err != nil {
+				for code == http.StatusConflict {
+					jobItem, _ := s.jobClient.Get(job.UID)
+					job = jobItem.(*core.Job)
+
+					// modify job content
+					jobState, err = s.cli.GetJobState(jobID)
+					job.Status.State = core.JobState(jobState)
+
+					code, _, err = s.jobClient.Put(job.UID, job)
+				}
+			}
+
+			logger.GpuServerLogger.Printf("[periodicallyCheckJobState] job %v state update\n", i)
+		}
+
+		logger.GpuServerLogger.Printf("[periodicallyCheckJobState] jobs state check finish\n")
+	}
 }
 
 const defaultWorkerSleepInterval = time.Duration(3) * time.Second
@@ -197,7 +261,8 @@ loop:
 				s.enqueueJob(newJob)
 				logger.GpuServerLogger.Printf("[handleWatchJobs] new Job event, handle job %v created\n", newJob.UID)
 			case watch.Modified:
-				// ignore
+				newJob := (event.Object).(*core.Job)
+				go s.handleJobModified(newJob)
 			case watch.Deleted:
 				// ignore
 			case watch.Bookmark:
@@ -213,6 +278,58 @@ loop:
 }
 
 func (s *server) submitJob(job *core.Job) (jobId string, err error) {
-	jobId, err = s.cli.SubmitCudaJob(job.UID, job.Spec.CuFilePath, job.Spec.SlurmFilePath, job.Spec.ObjectFileName)
+	jobId, err = s.cli.SubmitCudaJob(job.UID, job.Spec.CuFilePath, job.Spec.SlurmFilePath, job.Spec.ResultFileName)
 	return jobId, err
+}
+
+func (s *server) handleJobModified(job *core.Job) {
+	// if job finish successfully
+	if job.Status.State == core.JobCompleted {
+		logger.GpuServerLogger.Printf("[handleJobModified] handling Job COMPLETED, jobId %v\n", job.Status.JobID)
+
+		downloaded, _ := s.downloadJobResult(job)
+
+		// download failed, change job state back to RUNNING for future check state
+		// to observe finish again
+		if !downloaded {
+			job.Status.State = core.JobRunning
+			// send binding result to apiserver
+			code, _, err := s.jobClient.Put(job.UID, job)
+			if err != nil {
+				for code == http.StatusConflict {
+					jobItem, _ := s.jobClient.Get(job.UID)
+					job = jobItem.(*core.Job)
+					job.Status.State = core.JobRunning
+					code, _, err = s.jobClient.Put(job.UID, job)
+				}
+				return
+			}
+			return
+		}
+
+		// job finished and download result success
+		// TODO: notify user
+		logger.GpuServerLogger.Printf("[handleJobModified] handling Job COMPLETED, jobID %v, result downloaded success\n", job.Status.JobID)
+
+	} else if job.Status.State == core.JobFailed {
+		logger.GpuServerLogger.Printf("[handleJobModified] handling Job FAILED, jobId %v\n", job.Status.JobID)
+		// job finished and failed
+		// TODO: notify user
+
+	}
+}
+
+const retryDownloadTimes = 10
+
+func (s *server) downloadJobResult(job *core.Job) (downloaded bool, err error) {
+	downloaded = false
+	retry := 0
+	for !downloaded && retry < retryDownloadTimes {
+		downloaded, err = s.cli.DownloadResult(job.UID, job.Spec.ResultFilePath, job.Spec.ResultFileName)
+		if err != nil {
+			logger.GpuServerLogger.Printf("[handleJobModified] downloadJobResult for jobId %v failed: %v\n", job.Status.JobID, err)
+		}
+		retry += 1
+	}
+	return downloaded, err
 }

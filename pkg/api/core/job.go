@@ -94,7 +94,8 @@ func (j *Job) DeleteOwnerReference(uid types.UID) {
 type JobSpec struct {
 	CuFilePath     string `json:"cuFilePath,omitempty"`
 	SlurmFilePath  string `json:"slurmFilePath,omitempty"`
-	ObjectFileName string `json:"objectFileName,omitempty"`
+	ResultFileName string `json:"resultFileName,omitempty"`
+	ResultFilePath string `json:"resultFilePath,omitempty"`
 }
 
 type JobStatus struct {
@@ -119,6 +120,14 @@ const (
 	JobCompleted JobState = "COMPLETED"
 	JobMissing   JobState = "MISSING"
 )
+
+func JobUnfinished(state JobState) bool {
+	return state == JobPending || state == JobRunning
+}
+
+func JobFinished(state JobState) bool {
+	return state == JobFailed || state == JobCompleted
+}
 
 type JobList struct {
 	meta.TypeMeta `json:",inline"`
