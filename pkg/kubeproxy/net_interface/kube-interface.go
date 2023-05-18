@@ -4,7 +4,7 @@ import (
 	"os/exec"
 )
 
-const kubeNetworkDevice = "kube-proxy0"
+const kubeNetworkDevice = "minik8s-proxy0"
 const ipCommand = "ip"
 
 func AddIPV4(ip string) error {
