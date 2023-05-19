@@ -63,6 +63,8 @@ func CreateApiObject(ty types.ApiObjectType) IApiObject {
 		return &ReplicaSet{}
 	case types.HorizontalPodAutoscalerObjectType:
 		return &HorizontalPodAutoscaler{}
+	case types.FuncTemplateObjectType:
+		return &Func{}
 	case types.ErrorObjectType:
 		return &ErrorApiObject{}
 	case types.JobObjectType:
@@ -91,6 +93,8 @@ func CreateApiObjectList(ty types.ApiObjectType) IApiObjectList {
 		return &JobList{}
 	case types.HeartbeatObjectType:
 		return &HeartbeatList{}
+	case types.FuncTemplateObjectType:
+		return &FuncList{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -109,6 +113,8 @@ func CreateApiObjectStatus(ty types.ApiObjectType) IApiObjectStatus {
 		return &ReplicaSetStatus{}
 	case types.HorizontalPodAutoscalerObjectType:
 		return &HorizontalPodAutoscalerStatus{}
+	case types.FuncTemplateObjectType:
+		return &FuncStatus{}
 	case types.JobObjectType:
 		return &JobStatus{}
 	case types.HeartbeatObjectType:
@@ -131,6 +137,8 @@ func GetApiObjectsURL(ty types.ApiObjectType) string {
 		return api.ReplicaSetsURL
 	case types.HorizontalPodAutoscalerObjectType:
 		return api.HorizontalPodAutoscalersURL
+	case types.FuncTemplateObjectType:
+		return api.FuncTemplatesURL
 	case types.JobObjectType:
 		return api.JobsURL
 	case types.HeartbeatObjectType:
