@@ -82,6 +82,8 @@ func (s *server) periodicallyCheckJobState() {
 			continue
 		}
 
+		logger.GpuServerLogger.Printf("[periodicallyCheckJobState] jobList %v\n", jobList)
+
 		jobs := jobList.GetIApiObjectArr()
 		logger.GpuServerLogger.Printf("[periodicallyCheckJobState] %v jobs to check in apiserver storage\n", len(jobs))
 		for i, item := range jobs {

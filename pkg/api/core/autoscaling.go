@@ -393,7 +393,8 @@ func (h *HorizontalPodAutoscalerList) GetItems() any {
 
 func (h *HorizontalPodAutoscalerList) GetIApiObjectArr() (res []IApiObject) {
 	for _, item := range h.Items {
-		res = append(res, &item)
+		itemTemp := item
+		res = append(res, &itemTemp)
 	}
 	return res
 }

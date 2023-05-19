@@ -259,7 +259,8 @@ type ServiceList struct {
 
 func (s *ServiceList) GetIApiObjectArr() (res []IApiObject) {
 	for _, item := range s.Items {
-		res = append(res, &item)
+		itemTemp := item
+		res = append(res, &itemTemp)
 	}
 	return res
 }

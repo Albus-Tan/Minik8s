@@ -234,7 +234,8 @@ type NodeList struct {
 
 func (n *NodeList) GetIApiObjectArr() (res []IApiObject) {
 	for _, item := range n.Items {
-		res = append(res, &item)
+		itemTemp := item
+		res = append(res, &itemTemp)
 	}
 	return res
 }

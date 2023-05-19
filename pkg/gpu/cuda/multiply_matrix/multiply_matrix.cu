@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
-// Matrix size: 50 * 25 & 25 * 50
+
 const int M = 15;
 const int N = 10;
 
@@ -120,4 +120,5 @@ int main() {
         }
         printf("\n");
     }
+    
 }

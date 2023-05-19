@@ -306,7 +306,8 @@ func (p *PodList) JsonMarshal() ([]byte, error) {
 
 func (p *PodList) GetIApiObjectArr() (res []IApiObject) {
 	for _, item := range p.Items {
-		res = append(res, &item)
+		itemTemp := item
+		res = append(res, &itemTemp)
 	}
 	return res
 }

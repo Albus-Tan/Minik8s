@@ -178,7 +178,8 @@ func (j *JobList) GetItems() any {
 
 func (j *JobList) GetIApiObjectArr() (res []IApiObject) {
 	for _, item := range j.Items {
-		res = append(res, &item)
+		itemTemp := item
+		res = append(res, &itemTemp)
 	}
 	return res
 }
