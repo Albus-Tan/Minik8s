@@ -5,6 +5,7 @@ import (
 	"log"
 	"minik8s/pkg/apiserver"
 	"minik8s/pkg/controller"
+	"minik8s/pkg/gpu"
 	"minik8s/pkg/node"
 	"minik8s/pkg/scheduler"
 	"time"
@@ -37,6 +38,11 @@ func main() {
 	controllerManager.Run(ctx, cancel)
 
 	log.Printf("[Master] master controllerManager running\n")
+
+	gpuServer := gpu.NewServer()
+	gpuServer.Run(ctx, cancel)
+
+	log.Printf("[Master] master gpu server running\n")
 
 	log.Printf("[Master] master init finish\n")
 
