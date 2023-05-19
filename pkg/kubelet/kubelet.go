@@ -349,20 +349,23 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 		})
 	}
 	for idx, c := range pod.Status.ContainerStatuses {
-		if c.State.Running != nil {
-			r, err := k.criClient.ContainerIsRunning(ctx, c.ContainerID)
-			if err != nil {
-				log.Println(err.Error())
+		r, e, err := k.criClient.ContainerStatus(ctx, c.ContainerID)
+		if err != nil {
+			log.Println(err.Error())
+		}
+		if !r || err != nil {
+			pod.Status.ContainerStatuses[idx].State = core.ContainerState{
+				Terminated: &core.ContainerStateTerminated{
+					ExitCode:    int32(e),
+					Signal:      0,
+					Reason:      "",
+					Message:     "",
+					ContainerID: c.ContainerID,
+				},
 			}
-			if !r || err != nil {
-				pod.Status.ContainerStatuses[idx].State = core.ContainerState{
-					Terminated: &core.ContainerStateTerminated{
-						ExitCode:    0,
-						Signal:      0,
-						Reason:      "",
-						Message:     "",
-						ContainerID: c.ContainerID,
-					},
+			if pod.Spec.RestartPolicy == core.RestartPolicyAlways {
+				if err := k.criClient.ContainerStart(ctx, pod.UID+"-"+c.Name); err != nil {
+					log.Fatalf("run failed %v", err)
 				}
 
 			}
