@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"minik8s/config"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
@@ -339,6 +340,20 @@ func (s *server) downloadJobResult(job *core.Job) (downloaded bool, err error) {
 }
 
 func GenerateJobScript(job *core.Job) string {
+
+	mailRemindTemplate := `#SBATCH --mail-type=%s
+#SBATCH --mail-user=%s%s
+`
+	mailRemind := ""
+	if job.Spec.Args.Mail != nil {
+		mailRemind = fmt.Sprintf(
+			mailRemindTemplate,
+			job.Spec.Args.Mail.Type,
+			job.Spec.Args.Mail.UserName,
+			config.MailAddressSuffix,
+		)
+	}
+
 	template := `#!/bin/bash
 #SBATCH --job-name=%s
 #SBATCH --partition=dgx2
@@ -348,6 +363,7 @@ func GenerateJobScript(job *core.Job) string {
 #SBATCH --ntasks-per-node=%d
 #SBATCH --cpus-per-task=%d
 #SBATCH --gres=gpu:%d
+%s
 
 ulimit -s unlimited
 ulimit -l unlimited
@@ -383,6 +399,7 @@ module load gcc/8.3.0 cuda/10.1.243-gcc-8.3.0
 		numTasksPerNode,
 		cpusPerTask,
 		gpuResources,
+		mailRemind,
 		job.Spec.ResultFileName,
 	)
 	return script

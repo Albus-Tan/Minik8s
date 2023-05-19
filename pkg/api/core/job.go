@@ -99,10 +99,25 @@ type JobSpec struct {
 }
 
 type JobArgs struct {
-	NumTasksPerNode int `json:"numTasksPerNode,omitempty"`
-	CpusPerTask     int `json:"cpusPerTask,omitempty"`
-	GpuResources    int `json:"gpuResources,omitempty"`
+	NumTasksPerNode int         `json:"numTasksPerNode,omitempty"`
+	CpusPerTask     int         `json:"cpusPerTask,omitempty"`
+	GpuResources    int         `json:"gpuResources,omitempty"`
+	Mail            *MailRemind `json:"mail,omitempty"`
 }
+
+type MailRemind struct {
+	Type     MailRemindType `json:"type,omitempty"`
+	UserName string         `json:"userName,omitempty"`
+}
+
+type MailRemindType string
+
+const (
+	MailRemindAll   MailRemindType = "all"
+	MailRemindBegin MailRemindType = "begin"
+	MailRemindEnd   MailRemindType = "end"
+	MailRemindFail  MailRemindType = "fail"
+)
 
 type JobStatus struct {
 	JobID string   `json:"jobID,omitempty"`
