@@ -53,6 +53,15 @@ const (
 	HorizontalPodAutoscalerStatusURL = "/api/hpa/:name/status"
 )
 
+// Job
+const (
+	JobsURL      = "/api/jobs/"
+	JobURL       = "/api/jobs/:name"
+	WatchJobsURL = "/api/watch/jobs"
+	WatchJobURL  = "/api/watch/jobs/:name"
+	JobStatusURL = "/api/jobs/:name/status"
+)
+
 // ------------------ Test API ---------------------
 
 const (

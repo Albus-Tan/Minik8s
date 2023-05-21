@@ -1,0 +1,16 @@
+{
+  "apiVersion": "v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "matrix-mul",
+    "namespace": "default"
+  },
+  "spec": {
+    "cuFilePath": "D:\\SJTU\\Minik8s\\minik8s\\pkg\\gpu\\cuda\\multiply_matrix\\multiply_matrix.cu",
+    "resultFileName": "multiply_matrix",
+    "resultFilePath": "D:\\SJTU\\Minik8s\\minik8s\\pkg\\gpu\\cuda\\multiply_matrix",
+    "args": {
+      "cpusPerTask": 1
+    }
+  }
+}

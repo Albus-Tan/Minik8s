@@ -182,4 +182,34 @@ func (h httpServer) BindHandlers() {
 	// Replace status of the specified HorizontalPodAutoscaler
 	// PUT /api/hpa/{name}/status
 	h.router.PUT(api.HorizontalPodAutoscalerStatusURL, handlers.HandlePutHorizontalPodAutoscalerStatus)
+
+	/*--------------------- Job ---------------------*/
+	// Create a Job
+	// POST /api/jobs
+	h.router.POST(api.JobsURL, handlers.HandlePostJob)
+	// Update/Replace the specified Job
+	// PUT /api/jobs/{name}
+	h.router.PUT(api.JobURL, handlers.HandlePutJob)
+	// Delete a Job
+	// DELETE /api/jobs/{name}
+	h.router.DELETE(api.JobURL, handlers.HandleDeleteJob)
+	// Read the specified Job
+	// GET /api/jobs/{name}
+	h.router.GET(api.JobURL, handlers.HandleGetJob)
+	// List or watch objects of kind Job
+	// GET /api/jobs
+	h.router.GET(api.JobsURL, handlers.HandleGetJobs)
+	// Watch changes to an object of kind Job
+	// GET /api/watch/jobs/{name}
+	h.router.GET(api.WatchJobURL, handlers.HandleWatchJob)
+	// Watch individual changes to a list of Job
+	// GET /api/watch/jobs
+	h.router.GET(api.WatchJobsURL, handlers.HandleWatchJobs)
+	/*--------------------- Job Status ---------------------*/
+	// Read status of the specified Job
+	// GET /api/jobs/{name}/status
+	h.router.GET(api.JobStatusURL, handlers.HandleGetJobStatus)
+	// Replace status of the specified Job
+	// PUT /api/jobs/{name}/status
+	h.router.PUT(api.JobStatusURL, handlers.HandlePutJobStatus)
 }

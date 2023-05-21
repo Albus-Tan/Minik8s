@@ -256,7 +256,8 @@ func (r *ReplicaSetList) GetItems() any {
 
 func (r *ReplicaSetList) GetIApiObjectArr() (res []IApiObject) {
 	for _, item := range r.Items {
-		res = append(res, &item)
+		itemTemp := item
+		res = append(res, &itemTemp)
 	}
 	return res
 }
