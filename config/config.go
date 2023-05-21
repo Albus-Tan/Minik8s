@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 const latestVersion = "v1.0.1"
 
 func Version() string {
@@ -52,3 +54,8 @@ const (
 	CuFileSuffix      = ".cu"
 	MailAddressSuffix = "@sjtu.edu.cn"
 )
+
+/*--------------- Heartbeat ---------------*/
+const HeartbeatInterval = time.Duration(1) * time.Minute
+const HeartbeatDeadInterval = time.Duration(5) * time.Minute
+const HeartbeatCheckInterval = time.Duration(20) * time.Second

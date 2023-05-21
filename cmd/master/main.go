@@ -7,6 +7,7 @@ import (
 	"minik8s/pkg/controller"
 	"minik8s/pkg/gpu"
 	"minik8s/pkg/node"
+	"minik8s/pkg/node/heartbeat"
 	"minik8s/pkg/scheduler"
 	"time"
 )
@@ -43,6 +44,11 @@ func main() {
 	gpuServer.Run(ctx, cancel)
 
 	log.Printf("[Master] master gpu server running\n")
+
+	heartbeatWatcher := heartbeat.NewWatcher()
+	heartbeatWatcher.Run(ctx, cancel)
+
+	log.Printf("[Master] master heartbeat watcher running\n")
 
 	log.Printf("[Master] master init finish\n")
 
