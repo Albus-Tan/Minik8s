@@ -8,7 +8,6 @@ import (
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/generate"
-	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiserver/etcd"
 	"minik8s/pkg/logger"
@@ -163,11 +162,7 @@ func getFuncTemplate(c *gin.Context) (funcTemplate *core.Func, err error) {
 	return nil, errors.New("getFuncTemplate failed\n")
 }
 
-func createPod(newPod *core.Pod) (podUID types.UID, resourceVersion string, err error) {
-
-	// generate uuid for Pod
-	objectUID := utils.GenerateUID()
-	logger.ApiServerLogger.Printf("[apiserver] generate new Func Pod UID: %v", objectUID)
+func createPod(newPod *core.Pod, objectUID types.UID) (resourceVersion string, err error) {
 	newPod.SetUID(objectUID)
 	// set object ResourceVersion
 	createVersion := etcd.Rvm.GetNextResourceVersion()
@@ -175,7 +170,7 @@ func createPod(newPod *core.Pod) (podUID types.UID, resourceVersion string, err 
 
 	buf, err := newPod.JsonMarshal()
 	if err != nil {
-		return meta.UIDNotGenerated, "", err
+		return "", err
 	}
 
 	etcdPath := api.PodsURL + objectUID
@@ -184,9 +179,9 @@ func createPod(newPod *core.Pod) (podUID types.UID, resourceVersion string, err 
 	err, newVersion := etcd.Put(etcdPath, string(buf))
 	logger.ApiServerLogger.Printf("[apiserver] generate new Func Pod: json ResourceVersion %v, current ResourceVersion %v", createVersion, newVersion)
 	if err != nil {
-		return meta.UIDNotGenerated, "", err
+		return "", err
 	} else {
-		return objectUID, createVersion, err
+		return createVersion, err
 	}
 }
 
@@ -194,15 +189,64 @@ func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string) {
 
 	newPod := generate.EmptyPod()
 
+	// generate uuid for Pod
+	objectUID := utils.GenerateUID()
+	logger.ApiServerLogger.Printf("[apiserver] generate new Func Pod UID: %v", objectUID)
+
 	// TODO: @wjr fill in pod field by funcTemplate
 	// 	such as Containers, Object Meta Name etc.
-	// newPod.Name =
+	newPod.Name = objectUID + "-" + funcTemplate.Name
+	newPod.Spec = core.PodSpec{
+		Containers: []core.Container{
+			{
+				Name:  "instance",
+				Image: "lwsg/func-runner:0.7",
+				Env: []core.EnvVar{
+					{
+						Name:  "_API_SERVER",
+						Value: "http://10.180.253.214:8080",
+					},
+					{
+						Name:  "_PRE_RUN",
+						Value: funcTemplate.Spec.PreRun,
+					},
+					{
+						Name:  "_UID",
+						Value: instanceId,
+					},
+					{
+						Name:  "_ARG",
+						Value: args,
+					},
+					{
+						Name:  "_FUNC",
+						Value: funcTemplate.Spec.Function,
+					},
+					{
+						Name:  "_LEFT",
+						Value: funcTemplate.Spec.Left,
+					},
+					{
+						Name:  "_RIGHT",
+						Value: funcTemplate.Spec.Right,
+					},
+					{
+						Name:  "_SELF",
+						Value: objectUID,
+					},
+				},
+			},
+		},
+		RestartPolicy: core.RestartPolicyNever,
+	}
 
 	// create pod
-	podUID, _, err := createPod(newPod)
+	_, err := createPod(newPod, objectUID)
 	if err != nil {
 		return
 	}
 
-	logger.ApiServerLogger.Printf("[apiserver] doInsideFuncCall: for instanceId %v, create pod UID %v of func %v", instanceId, podUID, funcTemplate.Spec.Name)
+	logger.ApiServerLogger.Printf(
+		"[apiserver] doInsideFuncCall: for instanceId %v, create pod UID %v of func %v",
+		instanceId, objectUID, funcTemplate.Spec.Name)
 }
