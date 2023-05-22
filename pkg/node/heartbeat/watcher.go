@@ -232,8 +232,8 @@ loop:
 			if !ok {
 				break loop
 			}
-			log.Printf("[handleWatchNodes] event %v\n", event)
-			log.Printf("[handleWatchNodes] event object %v\n", event.Object)
+			//log.Printf("[handleWatchNodes] event %v\n", event)
+			//log.Printf("[handleWatchNodes] event object %v\n", event.Object)
 			eventCount += 1
 
 			switch event.Type {
