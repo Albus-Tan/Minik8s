@@ -267,7 +267,7 @@ func (h *horizontalController) doScale(hpa *core.HorizontalPodAutoscaler, rs *co
 	}
 
 	// check StabilizationWindowSeconds
-	if int32(time.Since(hpa.Status.LastScaleTime).Seconds()) < scalingRule.StabilizationWindowSeconds {
+	if time.Since(hpa.Status.LastScaleTime) < time.Second*time.Duration(scalingRule.StabilizationWindowSeconds) {
 		logger.HorizontalControllerLogger.Printf("[doScale] scaling canceled because of stabilization window second not reach\n")
 		return nil
 	}
@@ -360,7 +360,7 @@ func (h *horizontalController) normalizeDesiredReplicasWithBehaviors(hpa *core.H
 	modified := false
 	for i, policy := range scalingRule.Policies {
 
-		if int32(time.Since(hpa.Status.LastScaleTime).Seconds()) < policy.PeriodSeconds {
+		if time.Since(hpa.Status.LastScaleTime) < time.Second*time.Duration(policy.PeriodSeconds) {
 			logger.HorizontalControllerLogger.Printf("[normalizeDesiredReplicasWithBehaviors] policy %v, content %+v: PeriodSeconds not reach\n", i, policy)
 			delta = 0
 			modified = true
