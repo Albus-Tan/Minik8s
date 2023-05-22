@@ -28,6 +28,9 @@
 
 # Autoscaling Controller
 
+- `runWorker`：从工作队列中拿出对应 hpa，并检查是否满足扩缩容条件，进行自动扩缩容
+- `periodicallyCheckScale`：周期性地将所有 hpa 放入工作队列中（每 15 秒），以实现周期性检查，来达到自动扩缩容的目的
+
 ## Cadvisor 资源指标监控
 
 **使用二进制部署**
@@ -66,7 +69,10 @@ google/cadvisor:latest
 ssh -N minik8s-dev -L 8090:localhost:8090
 ```
 
+## ResourceMetricsClient
 
+- 通过一系列 `cadvisorClients map[types.UID]cadvisor.Interface` （每个 node 一个 cadvisor client），来获取每个 node 的各项资源占用指标，并进行聚合
+- 每隔一段时间同步更新最新 node 信息，以及资源指标信息
 
 ## HorizontalPodAutoscaler
 
