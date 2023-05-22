@@ -22,7 +22,7 @@ var putCmd = &cobra.Command{
 				return
 			}
 			podname := args[1]
-			url := config.ApiUrl() + "api/" + "pods/"
+			url := config.ApiUrl() + "pods/"
 			url = url + podname + "/status"
 			fileName := GetFilename()
 			jsonData, err := GetFormJsonData(fileName)
@@ -56,7 +56,7 @@ var putCmd = &cobra.Command{
 				return
 			}
 			replicasetname := args[1]
-			url := config.ApiUrl() + "api/" + "replicasets/"
+			url := config.ApiUrl() + "replicasets/"
 			url = url + replicasetname + "/status"
 			fileName := GetFilename()
 			jsonData, err := GetFormJsonData(fileName)
@@ -89,7 +89,7 @@ var putCmd = &cobra.Command{
 				return
 			}
 			hpaname := args[1]
-			url := config.ApiUrl() + "api/" + "hpas/"
+			url := config.ApiUrl() + "hpas/"
 			url = url + hpaname + "/status"
 			fileName := GetFilename()
 			jsonData, err := GetFormJsonData(fileName)

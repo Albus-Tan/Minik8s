@@ -51,7 +51,7 @@ var createCmd = &cobra.Command{
 			fmt.Printf("HTTP响应: %s\n", body)
 		case "replicaset":
 			filename := GetFilename()
-			url := config.ApiUrl() + "api/" + "replicasets/"
+			url := config.ApiUrl() + "replicasets/"
 			jsonData, err := GetFormJsonData(filename)
 			if err != nil {
 				fmt.Println("获得格式化数据错误:", err)
@@ -83,7 +83,7 @@ var createCmd = &cobra.Command{
 			fmt.Printf("HTTP响应: %s\n", body)
 		case "hpa":
 			filename := GetFilename()
-			url := config.ApiUrl() + "api/" + "hpa/"
+			url := config.ApiUrl() + "hpa/"
 			jsonData, err := GetFormJsonData(filename)
 			if err != nil {
 				fmt.Println("获得格式化数据错误:", err)
