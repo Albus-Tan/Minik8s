@@ -3,6 +3,7 @@ package kubectl
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"io"
 	"minik8s/config"
 	"net/http"
 )
@@ -13,23 +14,23 @@ var getCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		s := args[0]
-		fmt.Println(s)
 		switch s {
 		case "pods":
 			//get localhost:8080/api/pods:name
 			url := config.ApiUrl() + "pods/"
 			req, _ := http.NewRequest("GET", url, nil)
-			namespace := GetNamespace()
-			req.Header.Add("namespace", namespace)
-
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 		case "namespaces":
 			//get localhost:8080/api/namespaces
 			url := config.ApiUrl() + "namespaces/"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 		case "pod":
 			if len(args) < 2 {
 				fmt.Println("please input the pod name")
@@ -42,7 +43,9 @@ var getCmd = &cobra.Command{
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 		case "podstatus":
 			url := config.ApiUrl() + "pods/"
 			if len(args) < 2 {
@@ -55,24 +58,32 @@ var getCmd = &cobra.Command{
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 		case "clear":
 			url := config.ApiUrl() + "clear/"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 
 		case "nodes":
 			url := config.ApiUrl() + "nodes/"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 
 		case "replicasets":
 			url := config.ApiUrl() + "replicasets/"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 
 		case "replicaset":
 			if len(args) < 2 {
@@ -84,7 +95,9 @@ var getCmd = &cobra.Command{
 			url = url + replicasetname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 
 		case "replicasetstatus":
 			if len(args) < 2 {
@@ -96,13 +109,17 @@ var getCmd = &cobra.Command{
 			url = url + replicasetname + "/status"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 
 		case "hpas":
 			url := config.ApiUrl() + "hpas/"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 
 		case "hpa":
 			if len(args) < 2 {
@@ -114,7 +131,9 @@ var getCmd = &cobra.Command{
 			url = url + hpaname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 
 		case "hpastatus":
 			if len(args) < 2 {
@@ -126,7 +145,9 @@ var getCmd = &cobra.Command{
 			url = url + hpaname + "/status"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+
+			fmt.Println(string(str))
 		default:
 			fmt.Println("get error")
 		}

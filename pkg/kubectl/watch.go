@@ -3,6 +3,7 @@ package kubectl
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"io"
 	"minik8s/config"
 	"net/http"
 )
@@ -22,7 +23,8 @@ var watchCmd = &cobra.Command{
 			req.Header.Add("namespace", namespace)
 
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		case "pod":
 			if len(args) < 2 {
 				fmt.Println("please input the pod name")
@@ -35,13 +37,15 @@ var watchCmd = &cobra.Command{
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 
 		case "replicasets":
 			url := config.ApiUrl() + "watch/" + "replicasets/"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 
 		case "replicaset":
 			if len(args) < 2 {
@@ -53,12 +57,14 @@ var watchCmd = &cobra.Command{
 			url = url + replicasetname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		case "hpas":
 			url := config.ApiUrl() + "watch/" + "hpas/"
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		case "hpa":
 			if len(args) < 2 {
 				fmt.Println("please input the hpa name")
@@ -69,7 +75,8 @@ var watchCmd = &cobra.Command{
 			url = url + hpaname
 			req, _ := http.NewRequest("GET", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		default:
 			fmt.Println("watch error")
 

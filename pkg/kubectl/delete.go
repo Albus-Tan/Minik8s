@@ -3,6 +3,7 @@ package kubectl
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"io"
 	"minik8s/config"
 	"net/http"
 )
@@ -27,13 +28,15 @@ var deleteCmd = &cobra.Command{
 			namespace := GetNamespace()
 			req.Header.Add("namespace", namespace)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		case "namespace":
 			//delete localhost:8080/api/namespaces
 			url := config.ApiUrl() + "namespaces/"
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		case "node":
 			//delete localhost:8080/api/nodes/:name
 			if len(args) < 2 {
@@ -45,7 +48,8 @@ var deleteCmd = &cobra.Command{
 			url = url + nodename
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 
 		case "replicaset":
 			//delete localhost:8080/api/replicasets/:name
@@ -58,7 +62,8 @@ var deleteCmd = &cobra.Command{
 			url = url + replicasetname
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		case "hpa":
 			//delete localhost:8080/api/hpa/:name
 			if len(args) < 2 {
@@ -70,7 +75,8 @@ var deleteCmd = &cobra.Command{
 			url = url + hpaname
 			req, _ := http.NewRequest("DELETE", url, nil)
 			res, _ := http.DefaultClient.Do(req)
-			fmt.Println(res)
+			str, _ := io.ReadAll(res.Body)
+			fmt.Println(string(str))
 		default:
 			fmt.Println("please input the right command")
 		}

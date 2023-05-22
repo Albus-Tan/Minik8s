@@ -3,6 +3,7 @@ package kubectl
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"io"
 	"minik8s/config"
 	"net/http"
 )
@@ -15,7 +16,8 @@ var clearCmd = &cobra.Command{
 		url := config.ApiUrl() + "clear/"
 		req, _ := http.NewRequest("GET", url, nil)
 		res, _ := http.DefaultClient.Do(req)
-		fmt.Println(res)
+		str, _ := io.ReadAll(res.Body)
+		fmt.Println(string(str))
 	},
 }
 
