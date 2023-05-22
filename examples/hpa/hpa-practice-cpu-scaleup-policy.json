@@ -2,7 +2,7 @@
   "apiVersion": "autoscaling/v2beta2",
   "kind": "HorizontalPodAutoscaler",
   "metadata": {
-    "name": "hpa-practice-cpu"
+    "name": "hpa-practice-cpu-policy-scale-up"
   },
   "spec": {
     "minReplicas": 3,
@@ -33,6 +33,19 @@
       "apiVersion": "apps/v1",
       "kind": "ReplicaSet",
       "name": "myapp-replicas"
+    },
+    "behavior": {
+      "scaleUp": {
+        "selectPolicy": "Max",
+        "stabilizationWindowSeconds": 0,
+        "policies": [
+          {
+            "type": "Pods",
+            "value": 1,
+            "periodSeconds": 15
+          }
+        ]
+      }
     }
   }
 }
