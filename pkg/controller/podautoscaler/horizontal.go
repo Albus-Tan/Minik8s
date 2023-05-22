@@ -210,53 +210,32 @@ func (h *horizontalController) reconcileAutoscaler(ctx context.Context, key stri
 		rescale := false
 		rescaleReason := ""
 		currentReplicas := rs.Spec.Replicas
+		desiredReplicas := rs.Spec.Replicas
 		if currentReplicas > hpa.Spec.MaxReplicas {
 			rescaleReason = "Current number of replicas above Spec.MaxReplicas"
-			rs.Spec.Replicas = hpa.Spec.MaxReplicas
+			desiredReplicas = hpa.Spec.MaxReplicas
 			rescale = true
 		} else if currentReplicas < hpa.Spec.MinReplicas {
 			rescaleReason = "Current number of replicas below Spec.MinReplicas"
-			rs.Spec.Replicas = hpa.Spec.MinReplicas
+			desiredReplicas = hpa.Spec.MinReplicas
 			rescale = true
 		} else if currentReplicas == 0 {
 			rescaleReason = "Current number of replicas must be greater than 0"
-			rs.Spec.Replicas = 1
+			desiredReplicas = 1
 			rescale = true
 		} else {
 			var err error
-			rs.Spec.Replicas, rescale, rescaleReason, err = h.calculateDesiredReplicasByMertics(hpa, rs)
+			desiredReplicas, rescale, rescaleReason, err = h.calculateDesiredReplicasByMertics(hpa, rs)
 			if err != nil {
 				return err
-			}
-
-			if rs.Spec.Replicas > hpa.Spec.MaxReplicas {
-				rs.Spec.Replicas = hpa.Spec.MaxReplicas
-			} else if currentReplicas < hpa.Spec.MinReplicas {
-				rs.Spec.Replicas = hpa.Spec.MinReplicas
 			}
 		}
 
 		if rescale && h.rescaleTimeOut(hpa) {
-
-			hpa.Status.LastScaleTime = time.Now()
-			hpa.Status.CurrentReplicas = currentReplicas
-			hpa.Status.DesiredReplicas = rs.Spec.Replicas
-
-			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] rescale start for reason: %v\n", rescaleReason)
-			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] new status of hpa: CurrentReplicas %v, DesiredReplicas %v\n", hpa.Status.CurrentReplicas, hpa.Status.DesiredReplicas)
-
-			// update hpa
-			_, _, err := h.hpaClient.Put(hpa.UID, hpa)
+			err := h.doScale(hpa, rs, desiredReplicas, currentReplicas, rescaleReason)
 			if err != nil {
 				return err
 			}
-
-			// update rs
-			_, _, err = h.rsClient.Put(rs.UID, rs)
-			if err != nil {
-				return err
-			}
-
 			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] rescale finished for reason: %v\n", rescaleReason)
 		} else {
 			logger.HorizontalControllerLogger.Printf("[reconcileAutoscaler] No rescale this time: %v\n", rescaleReason)
@@ -266,6 +245,158 @@ func (h *horizontalController) reconcileAutoscaler(ctx context.Context, key stri
 		return errors.New(fmt.Sprintf("[reconcileAutoscaler] horizontalPodAutoScaler ScaleTargetRef kind %s not support", hpa.Spec.ScaleTargetRef.Kind))
 	}
 	return nil
+}
+
+func (h *horizontalController) doScale(hpa *core.HorizontalPodAutoscaler, rs *core.ReplicaSet, desiredReplicas int32, currentReplicas int32, rescaleReason string) error {
+
+	var scalingRule *core.HPAScalingRules = nil
+	if desiredReplicas > currentReplicas {
+		// scale up
+		if hpa.Spec.Behavior != nil && hpa.Spec.Behavior.ScaleUp != nil {
+			scalingRule = hpa.Spec.Behavior.ScaleUp
+		} else {
+			scalingRule = core.DefaultScaleUpRule()
+		}
+	} else {
+		// scale down
+		if hpa.Spec.Behavior != nil && hpa.Spec.Behavior.ScaleDown != nil {
+			scalingRule = hpa.Spec.Behavior.ScaleDown
+		} else {
+			scalingRule = core.DefaultScaleDownRule()
+		}
+	}
+
+	// check StabilizationWindowSeconds
+	if int32(time.Since(hpa.Status.LastScaleTime).Seconds()) < scalingRule.StabilizationWindowSeconds {
+		logger.HorizontalControllerLogger.Printf("[doScale] scaling canceled because of stabilization window second not reach\n")
+		return nil
+	}
+
+	// check SelectPolicy
+	if scalingRule.SelectPolicy == core.DisabledPolicySelect {
+		logger.HorizontalControllerLogger.Printf("[doScale] autoscaling disabled (scalingRule.SelectPolicy == core.DisabledPolicySelect)\n")
+		return nil
+	}
+
+	// normalize desired replicas with behaviors
+	desiredReplicas = h.normalizeDesiredReplicasWithBehaviors(hpa, scalingRule, currentReplicas, desiredReplicas)
+
+	if desiredReplicas == currentReplicas {
+		logger.HorizontalControllerLogger.Printf("[doScale] desiredReplicas == currentReplicas, original rescaleReason: %v\n", rescaleReason)
+		return nil
+	}
+
+	// do scale
+
+	rs.Spec.Replicas = desiredReplicas
+
+	hpa.Status.LastScaleTime = time.Now()
+	hpa.Status.CurrentReplicas = currentReplicas
+	hpa.Status.DesiredReplicas = rs.Spec.Replicas
+
+	logger.HorizontalControllerLogger.Printf("[doScale] rescale start for reason: %v\n", rescaleReason)
+	logger.HorizontalControllerLogger.Printf("[doScale] new status of hpa: CurrentReplicas %v, DesiredReplicas %v\n", hpa.Status.CurrentReplicas, hpa.Status.DesiredReplicas)
+
+	// update hpa
+	_, _, err := h.hpaClient.Put(hpa.UID, hpa)
+	if err != nil {
+		return err
+	}
+
+	// update rs
+	_, _, err = h.rsClient.Put(rs.UID, rs)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *horizontalController) calculateResultDeltaByScalingPolicy(selectPolicy core.ScalingPolicySelect, originDelta int32, newDelta int32) int32 {
+	switch selectPolicy {
+	case core.MinPolicySelect:
+		// MinPolicySelect selects the policy with the lowest possible change
+		if originDelta > newDelta {
+			return newDelta
+		} else {
+			return originDelta
+		}
+	case core.MaxPolicySelect:
+		// MaxPolicySelect selects the policy with the highest possible change
+		if originDelta < newDelta {
+			return newDelta
+		} else {
+			return originDelta
+		}
+	case core.DisabledPolicySelect:
+		// DisabledPolicySelect disables the scaling in this direction
+	}
+	return originDelta
+}
+
+func (h *horizontalController) normalizeDesiredReplicasWithBehaviors(hpa *core.HorizontalPodAutoscaler, scalingRule *core.HPAScalingRules, currentReplicas int32, desiredReplicas int32) (normalizedDesiredReplicas int32) {
+
+	var change int32 = 0 // above 0
+	if desiredReplicas > currentReplicas {
+		// scale up
+		change = desiredReplicas - currentReplicas
+	} else {
+		// scale down
+		change = currentReplicas - desiredReplicas
+	}
+
+	var delta int32 = 0
+	switch scalingRule.SelectPolicy {
+	case core.MinPolicySelect:
+		// MinPolicySelect selects the policy with the lowest possible change
+		delta = math.MaxInt32
+	case core.MaxPolicySelect:
+		// MaxPolicySelect selects the policy with the highest possible change
+		delta = 0
+	case core.DisabledPolicySelect:
+		// DisabledPolicySelect disables the scaling in this direction
+	}
+
+	modified := false
+	for i, policy := range scalingRule.Policies {
+
+		if int32(time.Since(hpa.Status.LastScaleTime).Seconds()) < policy.PeriodSeconds {
+			logger.HorizontalControllerLogger.Printf("[normalizeDesiredReplicasWithBehaviors] policy %v, content %+v: PeriodSeconds not reach\n", i, policy)
+			delta = 0
+			modified = true
+			continue
+		}
+
+		newDelta := delta
+		switch policy.Type {
+		case core.PercentScalingPolicy:
+			newDelta = currentReplicas * policy.Value / 100
+		case core.PodsScalingPolicy:
+			newDelta = policy.Value
+		}
+		delta = h.calculateResultDeltaByScalingPolicy(scalingRule.SelectPolicy, delta, newDelta)
+		modified = true
+	}
+
+	// normalize change with delta
+	if change > delta && modified {
+		change = delta
+	}
+
+	if desiredReplicas > currentReplicas {
+		// scale up
+		normalizedDesiredReplicas = currentReplicas + change
+	} else {
+		// scale down
+		normalizedDesiredReplicas = currentReplicas - change
+	}
+
+	if normalizedDesiredReplicas > hpa.Spec.MaxReplicas {
+		normalizedDesiredReplicas = hpa.Spec.MaxReplicas
+	} else if normalizedDesiredReplicas < hpa.Spec.MinReplicas {
+		normalizedDesiredReplicas = hpa.Spec.MinReplicas
+	}
+	return normalizedDesiredReplicas
 }
 
 func (h *horizontalController) getRSOwned(hpa *core.HorizontalPodAutoscaler) (rssOwned []core.ReplicaSet, err error) {

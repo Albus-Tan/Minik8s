@@ -283,6 +283,39 @@ type HorizontalPodAutoscalerBehavior struct {
 	ScaleDown *HPAScalingRules `json:"scaleDown,omitempty"`
 }
 
+func DefaultScaleUpRule() (r *HPAScalingRules) {
+	upPolicies := make([]HPAScalingPolicy, 2)
+	upPolicies[0] = HPAScalingPolicy{
+		Type:          PercentScalingPolicy,
+		Value:         100,
+		PeriodSeconds: 60,
+	}
+	upPolicies[1] = HPAScalingPolicy{
+		Type:          PodsScalingPolicy,
+		Value:         1,
+		PeriodSeconds: 15,
+	}
+	return &HPAScalingRules{
+		StabilizationWindowSeconds: 0,
+		SelectPolicy:               MaxPolicySelect,
+		Policies:                   upPolicies,
+	}
+}
+
+func DefaultScaleDownRule() (r *HPAScalingRules) {
+	downPolicies := make([]HPAScalingPolicy, 1)
+	downPolicies[0] = HPAScalingPolicy{
+		Type:          PercentScalingPolicy,
+		Value:         100,
+		PeriodSeconds: 15,
+	}
+	return &HPAScalingRules{
+		StabilizationWindowSeconds: 300,
+		SelectPolicy:               MinPolicySelect,
+		Policies:                   downPolicies,
+	}
+}
+
 // ScalingPolicySelect is used to specify which policy should be used while scaling in a certain direction
 type ScalingPolicySelect string
 
