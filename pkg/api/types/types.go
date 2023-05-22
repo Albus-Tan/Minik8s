@@ -19,6 +19,7 @@ const (
 	HorizontalPodAutoscalerObjectType ApiObjectType = "HorizontalPodAutoscaler"
 	NodeObjectType                    ApiObjectType = "Node"
 	JobObjectType                     ApiObjectType = "Job"
+	HeartbeatObjectType               ApiObjectType = "Heartbeat"
 )
 
 // ResourceName is the name identifying various resources in a ResourceList.

@@ -62,6 +62,15 @@ const (
 	JobStatusURL = "/api/jobs/:name/status"
 )
 
+// Heartbeat
+const (
+	HeartbeatsURL      = "/api/heartbeats/"
+	HeartbeatURL       = "/api/heartbeats/:name"
+	WatchHeartbeatsURL = "/api/watch/heartbeats"
+	WatchHeartbeatURL  = "/api/watch/heartbeats/:name"
+	HeartbeatStatusURL = "/api/heartbeats/:name/status"
+)
+
 // ------------------ Test API ---------------------
 
 const (
