@@ -212,4 +212,34 @@ func (h httpServer) BindHandlers() {
 	// Replace status of the specified Job
 	// PUT /api/jobs/{name}/status
 	h.router.PUT(api.JobStatusURL, handlers.HandlePutJobStatus)
+
+	/*--------------------- Heartbeat ---------------------*/
+	// Create a Heartbeat
+	// POST /api/heartbeats
+	h.router.POST(api.HeartbeatsURL, handlers.HandlePostHeartbeat)
+	// Update/Replace the specified Heartbeat
+	// PUT /api/heartbeats/{name}
+	h.router.PUT(api.HeartbeatURL, handlers.HandlePutHeartbeat)
+	// Delete a Heartbeat
+	// DELETE /api/heartbeats/{name}
+	h.router.DELETE(api.HeartbeatURL, handlers.HandleDeleteHeartbeat)
+	// Read the specified Heartbeat
+	// GET /api/heartbeats/{name}
+	h.router.GET(api.HeartbeatURL, handlers.HandleGetHeartbeat)
+	// List or watch objects of kind Heartbeat
+	// GET /api/heartbeats
+	h.router.GET(api.HeartbeatsURL, handlers.HandleGetHeartbeats)
+	// Watch changes to an object of kind Heartbeat
+	// GET /api/watch/heartbeats/{name}
+	h.router.GET(api.WatchHeartbeatURL, handlers.HandleWatchHeartbeat)
+	// Watch individual changes to a list of Heartbeat
+	// GET /api/watch/heartbeats
+	h.router.GET(api.WatchHeartbeatsURL, handlers.HandleWatchHeartbeats)
+	/*--------------------- Heartbeat Status ---------------------*/
+	// Read status of the specified Heartbeat
+	// GET /api/heartbeats/{name}/status
+	h.router.GET(api.HeartbeatStatusURL, handlers.HandleGetHeartbeatStatus)
+	// Replace status of the specified Heartbeat
+	// PUT /api/heartbeats/{name}/status
+	h.router.PUT(api.HeartbeatStatusURL, handlers.HandlePutHeartbeatStatus)
 }
