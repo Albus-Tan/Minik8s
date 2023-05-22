@@ -150,8 +150,8 @@ loop:
 			if !ok {
 				break loop
 			}
-			log.Printf("[handleWatchHeartbeats] event %v\n", event)
-			log.Printf("[handleWatchHeartbeats] event object %v\n", event.Object)
+			// log.Printf("[handleWatchHeartbeats] event %v\n", event)
+			// log.Printf("[handleWatchHeartbeats] event object %v\n", event.Object)
 			eventCount += 1
 
 			switch event.Type {
