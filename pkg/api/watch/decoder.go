@@ -42,7 +42,7 @@ func NewEtcdEventDecoder(body io.ReadCloser, ty types.ApiObjectType) *EtcdEventD
 // watch.Event step by step
 func (e *EtcdEventDecoder) convertEvent(buf []byte, ty types.ApiObjectType) (*Event, error) {
 
-	log.Printf("[EtcdEventDecoder][ConvertEvent] buf: %v\n", string(buf))
+	// log.Printf("[EtcdEventDecoder][ConvertEvent] buf: %v\n", string(buf))
 	event := &etcd.Event{}
 	err := json.Unmarshal(buf, event)
 	if err != nil {
