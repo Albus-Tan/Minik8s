@@ -71,6 +71,8 @@ func CreateApiObject(ty types.ApiObjectType) IApiObject {
 		return &Job{}
 	case types.HeartbeatObjectType:
 		return &Heartbeat{}
+	case types.DnsObjectType:
+		return &DNS{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -95,6 +97,8 @@ func CreateApiObjectList(ty types.ApiObjectType) IApiObjectList {
 		return &HeartbeatList{}
 	case types.FuncTemplateObjectType:
 		return &FuncList{}
+	case types.DnsObjectType:
+		return &DnsList{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -119,6 +123,8 @@ func CreateApiObjectStatus(ty types.ApiObjectType) IApiObjectStatus {
 		return &JobStatus{}
 	case types.HeartbeatObjectType:
 		return &HeartbeatStatus{}
+	case types.DnsObjectType:
+		return &DnsStatus{}
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -143,6 +149,8 @@ func GetApiObjectsURL(ty types.ApiObjectType) string {
 		return api.JobsURL
 	case types.HeartbeatObjectType:
 		return api.HeartbeatsURL
+	case types.DnsObjectType:
+		return api.DNSsURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
@@ -164,6 +172,8 @@ func GetWatchApiObjectsURL(ty types.ApiObjectType) string {
 		return api.WatchJobsURL
 	case types.HeartbeatObjectType:
 		return api.WatchHeartbeatsURL
+	case types.DnsObjectType:
+		return api.WatchDNSsURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}

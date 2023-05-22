@@ -243,6 +243,36 @@ func (h httpServer) BindHandlers() {
 	// PUT /api/heartbeats/{name}/status
 	h.router.PUT(api.HeartbeatStatusURL, handlers.HandlePutHeartbeatStatus)
 
+	/*--------------------- DNS ---------------------*/
+	// Create a DNS
+	// POST /api/dns
+	h.router.POST(api.DNSsURL, handlers.HandlePostDNS)
+	// Update/Replace the specified DNS
+	// PUT /api/dns/{name}
+	h.router.PUT(api.DNSURL, handlers.HandlePutDNS)
+	// Delete a DNS
+	// DELETE /api/dns/{name}
+	h.router.DELETE(api.DNSURL, handlers.HandleDeleteDNS)
+	// Read the specified DNS
+	// GET /api/dns/{name}
+	h.router.GET(api.DNSURL, handlers.HandleGetDNS)
+	// List or watch objects of kind DNS
+	// GET /api/dns
+	h.router.GET(api.DNSsURL, handlers.HandleGetDNSs)
+	// Watch changes to an object of kind DNS
+	// GET /api/watch/dns/{name}
+	h.router.GET(api.WatchDNSURL, handlers.HandleWatchDNS)
+	// Watch individual changes to a list of DNS
+	// GET /api/watch/dns
+	h.router.GET(api.WatchDNSsURL, handlers.HandleWatchDNSs)
+	/*--------------------- DNS Status ---------------------*/
+	// Read status of the specified DNS
+	// GET /api/dns/{name}/status
+	h.router.GET(api.DNSStatusURL, handlers.HandleGetDNSStatus)
+	// Replace status of the specified DNS
+	// PUT /api/dns/{name}/status
+	h.router.PUT(api.DNSStatusURL, handlers.HandlePutDNSStatus)
+
 	/*--------------------- Serverless ---------------------*/
 
 	/*--------------------- Function Template ---------------------*/

@@ -21,6 +21,7 @@ const (
 	JobObjectType                     ApiObjectType = "Job"
 	HeartbeatObjectType               ApiObjectType = "Heartbeat"
 	FuncTemplateObjectType            ApiObjectType = "Func"
+	DnsObjectType                     ApiObjectType = "DNS"
 )
 
 // ResourceName is the name identifying various resources in a ResourceList.

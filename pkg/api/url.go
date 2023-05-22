@@ -64,6 +64,15 @@ const (
 	JobStatusURL = "/api/jobs/:name/status"
 )
 
+// DNS
+const (
+	DNSsURL      = "/api/dns/"
+	DNSURL       = "/api/dns/:name"
+	WatchDNSsURL = "/api/watch/dns"
+	WatchDNSURL  = "/api/watch/dns/:name"
+	DNSStatusURL = "/api/dns/:name/status"
+)
+
 // Heartbeat
 const (
 	HeartbeatsURL      = "/api/heartbeats/"
