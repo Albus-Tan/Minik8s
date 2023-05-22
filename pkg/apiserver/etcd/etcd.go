@@ -39,21 +39,21 @@ type ResourceVersionManager struct {
 func (r *ResourceVersionManager) GetNextResourceVersion() string {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	logger.ApiServerLogger.Printf("[ResourceVersionManager] GetNextResourceVersion %v\n", r.version)
+	// logger.ApiServerLogger.Printf("[ResourceVersionManager] GetNextResourceVersion %v\n", r.version)
 	return strconv.FormatInt(r.version+1, 10)
 }
 
 func (r *ResourceVersionManager) GetResourceVersion() string {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	logger.ApiServerLogger.Printf("[ResourceVersionManager] GetResourceVersion %v\n", r.version)
+	// logger.ApiServerLogger.Printf("[ResourceVersionManager] GetResourceVersion %v\n", r.version)
 	return strconv.FormatInt(r.version, 10)
 }
 
 func (r *ResourceVersionManager) setResourceVersion(v string) {
 	r.mutex.Lock()
 	r.version, _ = strconv.ParseInt(v, 10, 64)
-	logger.ApiServerLogger.Printf("[ResourceVersionManager] SetResourceVersion %v\n", r.version)
+	// logger.ApiServerLogger.Printf("[ResourceVersionManager] SetResourceVersion %v\n", r.version)
 	r.mutex.Unlock()
 }
 
@@ -117,7 +117,7 @@ func Put(key, value string) (err error, newVersion string) {
 	}
 	newVersion = strconv.FormatInt(resp.Header.Revision, 10)
 	Rvm.setResourceVersion(newVersion)
-	fmt.Printf("[etcd] Put: newVersion %v, resp %v\n", newVersion, resp)
+	// fmt.Printf("[etcd] Put: newVersion %v, resp %v\n", newVersion, resp)
 
 	return err, newVersion
 }
@@ -143,13 +143,13 @@ func CheckVersionPut(key, value, oldVersion string) (err error, newVersion strin
 	// check version
 	newVersion = strconv.FormatInt(resp.Header.Revision, 10)
 	Rvm.setResourceVersion(newVersion)
-	fmt.Printf("[etcd] CheckVersionPut: newVersion %v, oldVersion %v, resp.PrevKv.ModRevision %v, resp %v\n", newVersion, oldVersion, resp.PrevKv.ModRevision, resp)
+	// fmt.Printf("[etcd] CheckVersionPut: newVersion %v, oldVersion %v, resp.PrevKv.ModRevision %v, resp %v\n", newVersion, oldVersion, resp.PrevKv.ModRevision, resp)
 
 	if oldVersion != strconv.FormatInt(resp.PrevKv.ModRevision, 10) {
 		fmt.Printf("[etcd] CheckVersionPut FAILED, oldVersion %v and resp.PrevKv.ModRevision %v mismatch\n", oldVersion, resp.PrevKv.ModRevision)
 		return err, newVersion, false
 	}
-	fmt.Printf("[etcd] CheckVersionPut SUCCESS\n")
+	// fmt.Printf("[etcd] CheckVersionPut SUCCESS\n")
 	return err, newVersion, true
 }
 
@@ -157,7 +157,7 @@ func Get(key string) (value string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	resp, err := etcdClient.Get(ctx, key)
 	cancel()
-	fmt.Printf("[etcd] Get: resp %v\n", resp)
+	// fmt.Printf("[etcd] Get: resp %v\n", resp)
 
 	if err != nil {
 		logger.ApiServerLogger.Printf("[etcd] Get failed, err:%v\n", err)
@@ -175,7 +175,7 @@ func GetWithVersion(key string) (value string, version string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	resp, err := etcdClient.Get(ctx, key)
 	cancel()
-	fmt.Printf("[etcd] GetWithVersion: resp %v\n", resp)
+	// fmt.Printf("[etcd] GetWithVersion: resp %v\n", resp)
 
 	if err != nil {
 		logger.ApiServerLogger.Printf("[etcd] Get failed, err:%v\n", err)
@@ -286,7 +286,7 @@ func doWatch(rch clientv3.WatchChan, ch chan *Event) {
 	// continue to read rch until it's closed
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
-			logger.ApiServerLogger.Printf("[etcd] watch notified %s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			// logger.ApiServerLogger.Printf("[etcd] watch notified %s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
 			ch <- (*Event)(ev)
 		}
 	}
