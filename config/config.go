@@ -56,6 +56,6 @@ const (
 )
 
 /*--------------- Heartbeat ---------------*/
-const HeartbeatInterval = time.Duration(1) * time.Minute
-const HeartbeatDeadInterval = time.Duration(5) * time.Minute
-const HeartbeatCheckInterval = time.Duration(20) * time.Second
+const HeartbeatInterval = time.Duration(1) * time.Second
+const HeartbeatDeadInterval = time.Duration(15) * time.Second
+const HeartbeatCheckInterval = time.Duration(3) * time.Second
