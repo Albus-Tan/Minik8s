@@ -76,7 +76,7 @@ func (c *RESTClient) Post(object core.IApiObject) (int, *api.PostResponse, error
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, postResp, nil
 	} else {
-		logger.ApiClientLogger.Println("[RESTClient] http.Post StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Post StatusCode not http.StatusOK, ", postResp.ErrorMsg)
 		return resp.StatusCode, postResp, errors.New("StatusCode not 200")
 	}
 }
@@ -105,7 +105,7 @@ func (c *RESTClient) Put(name string, object core.IApiObject) (int, *api.PutResp
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, putResp, nil
 	} else {
-		logger.ApiClientLogger.Println("[RESTClient] http.Put StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Put StatusCode not http.StatusOK, ", putResp.ErrorMsg)
 		return resp.StatusCode, putResp, errors.New("StatusCode not 200")
 	}
 }
@@ -184,7 +184,7 @@ func (c *RESTClient) PutStatus(name string, object core.IApiObjectStatus) (int, 
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, putResp, nil
 	} else {
-		logger.ApiClientLogger.Println("[RESTClient] http.PutStatus StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.PutStatus StatusCode not http.StatusOK, ", putResp.ErrorMsg)
 		return resp.StatusCode, putResp, errors.New("StatusCode not 200")
 	}
 }
@@ -250,7 +250,7 @@ func (c *RESTClient) Delete(name string) (int, *api.DeleteResponse, error) {
 	if resp.StatusCode == http.StatusOK {
 		return resp.StatusCode, delResp, nil
 	} else {
-		logger.ApiClientLogger.Println("[RESTClient] http.Delete StatusCode not http.StatusOK", err)
+		logger.ApiClientLogger.Println("[RESTClient] http.Delete StatusCode not http.StatusOK, ", delResp.ErrorMsg)
 		return resp.StatusCode, delResp, errors.New("StatusCode not 200")
 	}
 }
