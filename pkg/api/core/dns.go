@@ -92,6 +92,13 @@ func (j *DNS) DeleteOwnerReference(uid types.UID) {
 }
 
 type DnsSpec struct {
+	Hostname string       `json:"hostname,omitempty"`
+	Mappings []DnsMapping `json:"mappings,omitempty"`
+}
+
+type DnsMapping struct {
+	Address string `json:"address,omitempty"`
+	Path    string `json:"path,omitempty"`
 }
 
 type DnsStatus struct {
