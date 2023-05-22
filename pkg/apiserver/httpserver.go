@@ -242,4 +242,40 @@ func (h httpServer) BindHandlers() {
 	// Replace status of the specified Heartbeat
 	// PUT /api/heartbeats/{name}/status
 	h.router.PUT(api.HeartbeatStatusURL, handlers.HandlePutHeartbeatStatus)
+
+	/*--------------------- Serverless ---------------------*/
+
+	/*--------------------- Function Template ---------------------*/
+	// Create a Function Template
+	// POST /api/funcs/template
+	h.router.POST(api.FuncTemplatesURL, handlers.HandlePostFuncTemplate)
+	// Update/Replace the specified Function Template
+	// PUT /api/funcs/template/{name}
+	h.router.PUT(api.FuncTemplateURL, handlers.HandlePutFuncTemplate)
+	// Delete a Function Template
+	// DELETE /api/funcs/template/{name}
+	h.router.DELETE(api.FuncTemplateURL, handlers.HandleDeleteFuncTemplate)
+	// Read the specified Function Template
+	// GET /api/funcs/template/{name}
+	h.router.GET(api.FuncTemplateURL, handlers.HandleGetFuncTemplate)
+	// List or watch objects of kind Function Template
+	// GET /api/funcs/template
+	h.router.GET(api.FuncTemplatesURL, handlers.HandleGetFuncTemplates)
+
+	/*--------------------- Function Instance (For User) ---------------------*/
+	// Create a Function Instance (run function)
+	// return id (instance func id)
+	// POST /api/funcs/{name}
+	h.router.POST(api.FuncCallURL, handlers.HandleFuncCall)
+
+	// Get the function result
+	// GET /api/funcs/{id}
+	h.router.GET(api.FuncResultURL, handlers.HandleGetResult)
+
+	/*--------------------- Function Instance (For Impl) ---------------------*/
+
+	// Create a Function Instance (run function), id is the instance func id called by user
+	// PUT /api/funcs/{name}/{id}
+	h.router.PUT(api.FuncInsideCallURL, handlers.HandleInsideFuncCall)
+
 }

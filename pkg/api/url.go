@@ -6,6 +6,8 @@ const StatusSuffix = "/status"
 
 const ClearAllURL = "/clear"
 
+// "name" field means ApiObject uid in this file except for special explain
+
 // ------------------ REST API ---------------------
 // Pod
 const (
@@ -69,6 +71,19 @@ const (
 	WatchHeartbeatsURL = "/api/watch/heartbeats"
 	WatchHeartbeatURL  = "/api/watch/heartbeats/:name"
 	HeartbeatStatusURL = "/api/heartbeats/:name/status"
+)
+
+// Serverless
+const (
+	// FuncTemplate(s)URL Function Template
+	FuncTemplatesURL = "/api/funcs/template/"
+	FuncTemplateURL  = "/api/funcs/template/:name" // name here is func actual name, not template uid
+	// Func(s)URL Function Instance and real Call
+	FuncURL             = "/api/funcs/"
+	FuncCallURL         = "/api/funcs/:name"     // name here is func actual name, not template uid
+	FuncInsideCallURL   = "/api/funcs/:name/:id" // name here is func actual name, not template uid
+	FuncResultURL       = "/api/funcs/:id"
+	ReturnPreservedName = "RETURN"
 )
 
 // ------------------ Test API ---------------------

@@ -139,7 +139,7 @@ func buildSlaverContainerConfig(master string, cnt core.Container) *container.Co
 		Tty:             cnt.TTY,
 		OpenStdin:       false,
 		StdinOnce:       cnt.StdinOnce,
-		Env:             nil,
+		Env:             buildEnv(cnt),
 		Cmd:             append(cnt.Command, cnt.Args...),
 		Healthcheck:     nil,
 		ArgsEscaped:     false,
@@ -155,6 +155,14 @@ func buildSlaverContainerConfig(master string, cnt core.Container) *container.Co
 		StopTimeout:     nil,
 		Shell:           nil,
 	}
+}
+
+func buildEnv(cnt core.Container) []string {
+	var ret []string
+	for _, ev := range cnt.Env {
+		ret = append(ret, ev.Name+"="+ev.Value)
+	}
+	return ret
 }
 
 func buildMasterHostConfig(cnt core.Container) *container.HostConfig {
