@@ -292,7 +292,7 @@ func (h *horizontalController) doScale(hpa *core.HorizontalPodAutoscaler, rs *co
 
 	hpa.Status.LastScaleTime = time.Now()
 	hpa.Status.CurrentReplicas = currentReplicas
-	hpa.Status.DesiredReplicas = rs.Spec.Replicas
+	hpa.Status.DesiredReplicas = desiredReplicas
 
 	logger.HorizontalControllerLogger.Printf("[doScale] rescale start for reason: %v\n", rescaleReason)
 	logger.HorizontalControllerLogger.Printf("[doScale] new status of hpa: CurrentReplicas %v, DesiredReplicas %v\n", hpa.Status.CurrentReplicas, hpa.Status.DesiredReplicas)
