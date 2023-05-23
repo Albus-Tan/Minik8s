@@ -196,7 +196,7 @@ func (w *watcher) listAndWatchNodes(syncChan chan bool, stopCh <-chan struct{}) 
 	w.heartbeatMapLock.Lock()
 
 	// create map (without master)
-	w.lastHeartbeatMap = make(map[types.UID]core.Heartbeat, len(nodeItems)-1)
+	w.lastHeartbeatMap = make(map[types.UID]core.Heartbeat, len(nodeItems))
 
 	w.heartbeatMapLock.Unlock()
 

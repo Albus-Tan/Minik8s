@@ -71,19 +71,30 @@ func (s *sender) initHeartbeat() {
 
 func (s *sender) updateAndSendHeartbeat() error {
 
-	hbItem, err := s.heartbeatClient.Get(s.hb.UID)
-	if err != nil {
-		log.Printf("[updateAndSendHeartbeat] node %v get heartbeat info failed\n", s.nodeUID)
-		return err
-	}
+	//hbItem, err := s.heartbeatClient.Get(s.hb.UID)
+	//if err != nil {
+	//	log.Printf("[updateAndSendHeartbeat] node %v get heartbeat info failed\n", s.nodeUID)
+	//	return err
+	//}
 
-	s.hb = hbItem.(*core.Heartbeat)
+	//s.hb = hbItem.(*core.Heartbeat)
 	s.hb.Status.HeartbeatID = utils.GenerateHeartbeatID()
 	s.hb.Status.Timestamp = time.Now()
 
-	_, _, err = s.heartbeatClient.Put(s.hb.UID, s.hb)
+	_, resp, err := s.heartbeatClient.Put(s.hb.UID, s.hb)
+	s.hb.ResourceVersion = resp.ResourceVersion
 	if err != nil {
 		log.Printf("[updateAndSendHeartbeat] node %v heartbeat sent failed\n", s.nodeUID)
+
+		hbItem, err := s.heartbeatClient.Get(s.hb.UID)
+		if err != nil {
+			log.Printf("[updateAndSendHeartbeat] node %v get heartbeat info failed\n", s.nodeUID)
+			return err
+		}
+
+		newHb := hbItem.(*core.Heartbeat)
+		s.hb.ResourceVersion = newHb.ResourceVersion
+
 		return err
 	}
 
