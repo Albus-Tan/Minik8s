@@ -1,5 +1,7 @@
 # Serverless
 
+借鉴 Config Map 的思想设计
+
 ## API
 
 **Function Template**
