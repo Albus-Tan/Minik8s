@@ -68,6 +68,12 @@ func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 		etcdPath += objectUID
 	}
 
+	// process dns config
+	if ty == types.DnsObjectType {
+		dns := newObject.(*core.DNS)
+		handleAddCoreDnsConfig(dns)
+	}
+
 	// put/update {ApiObject} info into etcd
 	err, newVersion := etcd.Put(etcdPath, string(buf))
 	logger.ApiServerLogger.Printf("[apiserver] generate new %v: json ResourceVersion %v, current ResourceVersion %v", ty, createVersion, newVersion)
@@ -146,6 +152,15 @@ func handleDeleteObject(c *gin.Context, ty types.ApiObjectType) {
 	if !has {
 		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": fmt.Sprintf("No such %v", ty)})
 		return
+	}
+
+	// process dns config
+	if ty == types.DnsObjectType {
+		objectStr, _ := etcd.Get(c.Request.URL.Path)
+		newObject := core.CreateApiObject(ty)
+		err = newObject.CreateFromEtcdString(objectStr)
+		dns := newObject.(*core.DNS)
+		handleDeleteCoreDnsConfig(dns)
 	}
 
 	// delete {ApiObject} in etcd

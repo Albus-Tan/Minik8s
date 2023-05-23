@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"minik8s/pkg/api"
+	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 )
 
@@ -46,4 +47,19 @@ func HandleGetDNSStatus(c *gin.Context) {
 func HandlePutDNSStatus(c *gin.Context) {
 	etcdURL := api.DNSsURL + c.Param("name")
 	handlePutObjectStatus(c, types.DnsObjectType, etcdURL)
+}
+
+func handleAddCoreDnsConfig(dns *core.DNS) {
+
+	// handlePutCoreDnsConfig(key, val string)
+
+	// err, _ := etcd.Put(key, val)
+	//	return err
+
+}
+
+func handleDeleteCoreDnsConfig(dns *core.DNS) {
+	// delete config
+
+	// err, _ := etcd.Delete(key)
 }
