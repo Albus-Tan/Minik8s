@@ -52,8 +52,11 @@ func (r *ResourceVersionManager) GetResourceVersion() string {
 
 func (r *ResourceVersionManager) setResourceVersion(v string) {
 	r.mutex.Lock()
-	r.version, _ = strconv.ParseInt(v, 10, 64)
+	newVersion, _ := strconv.ParseInt(v, 10, 64)
 	// logger.ApiServerLogger.Printf("[ResourceVersionManager] SetResourceVersion %v\n", r.version)
+	if newVersion > r.version {
+		r.version = newVersion
+	}
 	r.mutex.Unlock()
 }
 
@@ -62,6 +65,49 @@ func (r *ResourceVersionManager) init(v int64) {
 	r.version = v
 	logger.ApiServerLogger.Printf("[ResourceVersionManager] init version %v\n", r.version)
 	r.mutex.Unlock()
+}
+
+type VersionLock interface {
+	Lock()
+	Unlock()
+	RLock()
+	RUnlock()
+	TryLock() bool
+	TryRLock() bool
+}
+
+var VLock VersionLock
+
+func init() {
+	VLock = &versionLock{}
+}
+
+type versionLock struct {
+	lck sync.RWMutex
+}
+
+func (vl *versionLock) Lock() {
+	vl.lck.Lock()
+}
+
+func (vl *versionLock) Unlock() {
+	vl.lck.Unlock()
+}
+
+func (vl *versionLock) RLock() {
+	vl.lck.RLock()
+}
+
+func (vl *versionLock) RUnlock() {
+	vl.lck.RUnlock()
+}
+
+func (vl *versionLock) TryLock() bool {
+	return vl.lck.TryLock()
+}
+
+func (vl *versionLock) TryRLock() bool {
+	return vl.lck.TryRLock()
 }
 
 func Init() {
