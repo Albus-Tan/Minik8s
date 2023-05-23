@@ -19,3 +19,12 @@ func PodFromReplicaSet(rs *core.ReplicaSet) *core.Pod {
 	newPod.Name = utils.AppendRandomNameSuffix(rs.Name)
 	return newPod
 }
+
+func EmptyPod() *core.Pod {
+	return &core.Pod{
+		TypeMeta:   meta.CreateTypeMeta(types.PodObjectType),
+		ObjectMeta: meta.ObjectMeta{},
+		Spec:       core.PodSpec{},
+		Status:     core.PodStatus{},
+	}
+}

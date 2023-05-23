@@ -11,3 +11,8 @@ func GenerateHeartbeatID() string {
 	uuidV4 := uuid.New()
 	return "heartbeat-" + uuidV4.String()
 }
+
+func GenerateInstanceID() string {
+	uuidV4 := uuid.New()
+	return uuidV4.String()
+}

@@ -34,12 +34,12 @@ func (c *dockerClient) ContainerStart(ctx context.Context, name string) error {
 	return c.Client.ContainerStart(ctx, c.ContainerId(ctx, name), dt.ContainerStartOptions{})
 }
 
-func (c *dockerClient) ContainerIsRunning(ctx context.Context, id string) (bool, error) {
+func (c *dockerClient) ContainerStatus(ctx context.Context, id string) (bool, int, error) {
 	resp, err := c.Client.ContainerInspect(ctx, id)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
-	return resp.State.Running, nil
+	return resp.State.Running, resp.State.ExitCode, nil
 }
 func (c *dockerClient) ContainerIP(ctx context.Context, id string) (string, error) {
 	resp, err := c.Client.ContainerInspect(ctx, id)
@@ -139,7 +139,7 @@ func buildSlaverContainerConfig(master string, cnt core.Container) *container.Co
 		Tty:             cnt.TTY,
 		OpenStdin:       false,
 		StdinOnce:       cnt.StdinOnce,
-		Env:             nil,
+		Env:             buildEnv(cnt),
 		Cmd:             append(cnt.Command, cnt.Args...),
 		Healthcheck:     nil,
 		ArgsEscaped:     false,
@@ -155,6 +155,14 @@ func buildSlaverContainerConfig(master string, cnt core.Container) *container.Co
 		StopTimeout:     nil,
 		Shell:           nil,
 	}
+}
+
+func buildEnv(cnt core.Container) []string {
+	var ret []string
+	for _, ev := range cnt.Env {
+		ret = append(ret, ev.Name+"="+ev.Value)
+	}
+	return ret
 }
 
 func buildMasterHostConfig(cnt core.Container) *container.HostConfig {

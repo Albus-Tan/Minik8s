@@ -55,7 +55,13 @@ func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 	}
 	//logger.ApiServerLogger.Printf("[apiserver] JsonMarshal buf %v", string(buf))
 
-	etcdPath := c.Request.URL.Path + objectUID
+	etcdPath := c.Request.URL.Path
+	if ty == types.FuncTemplateObjectType {
+		f := newObject.(*core.Func)
+		etcdPath += f.Spec.Name
+	} else {
+		etcdPath += objectUID
+	}
 
 	// put/update {ApiObject} info into etcd
 	err, newVersion := etcd.Put(etcdPath, string(buf))
