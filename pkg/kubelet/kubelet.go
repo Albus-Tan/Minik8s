@@ -3,6 +3,7 @@ package kubelet
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"minik8s/config"
 	"minik8s/pkg/api/core"
@@ -16,6 +17,7 @@ import (
 	"minik8s/pkg/kubelet/container/cri"
 	"minik8s/pkg/kubelet/pod"
 	"minik8s/pkg/logger"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -193,6 +195,10 @@ func (k *kubelet) handlePodModify(pod *core.Pod) {
 		return
 	}
 
+	if reflect.DeepEqual(old.Spec, pod.Spec) {
+		return
+	}
+
 	logger.KubeletLogger.Printf("Pod %v update on current node %v, start handle pod modify\n", pod.UID, k.node.Name)
 
 	up := containersNew(old.Spec.Containers, pod.Spec.Containers)
@@ -324,7 +330,16 @@ func (k *kubelet) removeMasterContainer(ctx context.Context, pod *core.Pod) {
 }
 
 func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
-	time.Sleep(2 * time.Second)
+	for {
+		err := k.inspectContainer(ctx, pod)
+		if err != nil {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
 	pod.Status.Phase = core.PodRunning
 	ip, err := k.criClient.ContainerIP(ctx, k.criClient.ContainerId(ctx, pod.UID+"-"+"pause"))
 
@@ -333,7 +348,6 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 	}
 	pod.Status.PodIP = ip
 
-	log.Println("start watch ", pod.UID)
 	pod.Status.ContainerStatuses = make([]core.ContainerStatus, 0)
 	for _, container := range pod.Spec.Containers {
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, core.ContainerStatus{
@@ -351,7 +365,7 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 	for idx, c := range pod.Status.ContainerStatuses {
 		r, e, err := k.criClient.ContainerStatus(ctx, c.ContainerID)
 		if err != nil {
-			log.Println(err.Error())
+			return err
 		}
 		if !r || err != nil {
 			pod.Status.ContainerStatuses[idx].State = core.ContainerState{
@@ -371,10 +385,16 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 			}
 		}
 	}
-	_, _, err = k.podClient.Put(pod.UID, &pod)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	log.Println("stop watch ", pod.UID)
 
+	oa, err := k.podClient.Get(pod.UID)
+	op := oa.(*core.Pod)
+	if !reflect.DeepEqual(op.Spec, pod.Spec) {
+		return fmt.Errorf("stale")
+	}
+	if reflect.DeepEqual(op.Status, pod.Status) {
+		return nil
+	}
+
+	_, _, err = k.podClient.Put(pod.UID, &pod)
+	return err
 }
