@@ -9,30 +9,31 @@ import (
 	"net/http"
 )
 
-var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "update pods or namespaces.",
+var putCmd = &cobra.Command{
+	Use:   "put",
+	Short: "put status or clear.",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		s := args[0]
 		switch s {
-		case "pod":
+		case "podstatus":
 			if len(args) < 2 {
 				fmt.Println("please input the pod name")
 				return
 			}
 			podname := args[1]
 			url := config.ApiUrl() + "pods/"
-			url = url + podname
-			filename := GetFilename()
-			jsonData, err := GetFormJsonData(filename)
+			url = url + podname + "/status"
+			fileName := GetFilename()
+			jsonData, err := GetFormJsonData(fileName)
 			if err != nil {
-				fmt.Println("获取格式化文件错误:", err)
+				fmt.Println("get json data error:", err)
 				return
 			}
+
 			req, err := http.NewRequest("PUT", url, bytes.NewReader(jsonData))
 			if err != nil {
-				fmt.Println("创建HTTP请求错误:", err)
+				fmt.Println("new request error:", err)
 				return
 			}
 			req.Header.Set("Content-Type", "application/json")
@@ -49,23 +50,23 @@ var updateCmd = &cobra.Command{
 				return
 			}
 			fmt.Printf("HTTP响应: %s\n", body)
-		case "replicaset":
+		case "replicasetstatus":
 			if len(args) < 2 {
 				fmt.Println("please input the replicaset name")
 				return
 			}
 			replicasetname := args[1]
 			url := config.ApiUrl() + "replicasets/"
-			url = url + replicasetname
-			filename := GetFilename()
-			jsonData, err := GetFormJsonData(filename)
+			url = url + replicasetname + "/status"
+			fileName := GetFilename()
+			jsonData, err := GetFormJsonData(fileName)
 			if err != nil {
-				fmt.Println("获取格式化文件错误:", err)
+				fmt.Println("get json data error:", err)
 				return
 			}
 			req, err := http.NewRequest("PUT", url, bytes.NewReader(jsonData))
 			if err != nil {
-				fmt.Println("创建HTTP请求错误:", err)
+				fmt.Println("new request error:", err)
 				return
 			}
 			req.Header.Set("Content-Type", "application/json")
@@ -82,23 +83,23 @@ var updateCmd = &cobra.Command{
 				return
 			}
 			fmt.Printf("HTTP响应: %s\n", body)
-		case "hpa":
+		case "hpastatus":
 			if len(args) < 2 {
 				fmt.Println("please input the hpa name")
 				return
 			}
 			hpaname := args[1]
-			url := config.ApiUrl() + "hpa/"
-			url = url + hpaname
-			filename := GetFilename()
-			jsonData, err := GetFormJsonData(filename)
+			url := config.ApiUrl() + "hpas/"
+			url = url + hpaname + "/status"
+			fileName := GetFilename()
+			jsonData, err := GetFormJsonData(fileName)
 			if err != nil {
-				fmt.Println("获取格式化文件错误:", err)
+				fmt.Println("get json data error:", err)
 				return
 			}
 			req, err := http.NewRequest("PUT", url, bytes.NewReader(jsonData))
 			if err != nil {
-				fmt.Println("创建HTTP请求错误:", err)
+				fmt.Println("new request error:", err)
 				return
 			}
 			req.Header.Set("Content-Type", "application/json")
@@ -117,10 +118,11 @@ var updateCmd = &cobra.Command{
 			fmt.Printf("HTTP响应: %s\n", body)
 		default:
 			fmt.Println("please input the right command")
+
 		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(putCmd)
 }
