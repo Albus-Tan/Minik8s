@@ -69,23 +69,36 @@ func (s *sender) initHeartbeat() {
 	s.hb.ResourceVersion = res.ResourceVersion
 }
 
-func (s *sender) updateAndSendHeartbeat() {
+func (s *sender) updateAndSendHeartbeat() error {
 
-	hbItem, err := s.heartbeatClient.Get(s.hb.UID)
-	if err != nil {
-		log.Printf("[updateAndSendHeartbeat] node %v get heartbeat info failed\n", s.nodeUID)
-		return
-	}
+	//hbItem, err := s.heartbeatClient.Get(s.hb.UID)
+	//if err != nil {
+	//	log.Printf("[updateAndSendHeartbeat] node %v get heartbeat info failed\n", s.nodeUID)
+	//	return err
+	//}
 
-	s.hb = hbItem.(*core.Heartbeat)
+	//s.hb = hbItem.(*core.Heartbeat)
 	s.hb.Status.HeartbeatID = utils.GenerateHeartbeatID()
 	s.hb.Status.Timestamp = time.Now()
 
-	_, _, err = s.heartbeatClient.Put(s.hb.UID, s.hb)
+	_, resp, err := s.heartbeatClient.Put(s.hb.UID, s.hb)
+	s.hb.ResourceVersion = resp.ResourceVersion
 	if err != nil {
 		log.Printf("[updateAndSendHeartbeat] node %v heartbeat sent failed\n", s.nodeUID)
-		return
+
+		hbItem, err := s.heartbeatClient.Get(s.hb.UID)
+		if err != nil {
+			log.Printf("[updateAndSendHeartbeat] node %v get heartbeat info failed\n", s.nodeUID)
+			return err
+		}
+
+		newHb := hbItem.(*core.Heartbeat)
+		s.hb.ResourceVersion = newHb.ResourceVersion
+
+		return err
 	}
+
+	return nil
 }
 
 const defaultHeartbeatSendInterval = config.HeartbeatInterval
@@ -100,9 +113,12 @@ func (s *sender) periodicallySendHeartbeat(ctx context.Context) {
 			return
 		default:
 			// send heartbeat by sending heartbeat object to ApiServer
-			s.updateAndSendHeartbeat()
-
-			log.Printf("[periodicallySendHeartbeat] node %v heartbeat sent success\n", s.nodeUID)
+			err := s.updateAndSendHeartbeat()
+			if err != nil {
+				log.Printf("[periodicallySendHeartbeat] node %v heartbeat sent failed, err: %v\n", s.nodeUID, err)
+			} else {
+				log.Printf("[periodicallySendHeartbeat] node %v heartbeat sent success\n", s.nodeUID)
+			}
 
 			time.Sleep(defaultHeartbeatSendInterval)
 		}

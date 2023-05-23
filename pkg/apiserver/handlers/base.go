@@ -44,6 +44,11 @@ func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 	objectUID := utils.GenerateUID()
 	logger.ApiServerLogger.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
 	newObject.SetUID(objectUID)
+
+	// lock for version get, set and store
+	etcd.VLock.Lock()
+	defer etcd.VLock.Unlock()
+
 	// set object ResourceVersion
 	createVersion := etcd.Rvm.GetNextResourceVersion()
 	newObject.SetResourceVersion(createVersion)
@@ -106,6 +111,10 @@ func handlePutObject(c *gin.Context, ty types.ApiObjectType) {
 		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version %v unmatch current version %v, %v has been modified by others, please GET for the new version and retry PUT operation", oldVersion, versionHas, ty)})
 		return
 	}
+
+	// lock for version get, set and store
+	etcd.VLock.Lock()
+	defer etcd.VLock.Unlock()
 
 	// update object new version
 	newObject.SetResourceVersion(etcd.Rvm.GetNextResourceVersion())
@@ -372,6 +381,10 @@ func handlePutObjectStatus(c *gin.Context, ty types.ApiObjectType, etcdURL strin
 		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version unmatch current version, %v has been modified by others, please GET for the new version and retry PUT operation", ty)})
 		return
 	}
+
+	// lock for version get, set and store
+	etcd.VLock.Lock()
+	defer etcd.VLock.Unlock()
 
 	// update object new version
 	object.SetResourceVersion(etcd.Rvm.GetNextResourceVersion())

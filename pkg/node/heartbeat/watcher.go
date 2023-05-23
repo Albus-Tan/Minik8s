@@ -196,7 +196,7 @@ func (w *watcher) listAndWatchNodes(syncChan chan bool, stopCh <-chan struct{}) 
 	w.heartbeatMapLock.Lock()
 
 	// create map (without master)
-	w.lastHeartbeatMap = make(map[types.UID]core.Heartbeat, len(nodeItems)-1)
+	w.lastHeartbeatMap = make(map[types.UID]core.Heartbeat, len(nodeItems))
 
 	w.heartbeatMapLock.Unlock()
 
@@ -232,8 +232,8 @@ loop:
 			if !ok {
 				break loop
 			}
-			log.Printf("[handleWatchNodes] event %v\n", event)
-			log.Printf("[handleWatchNodes] event object %v\n", event.Object)
+			//log.Printf("[handleWatchNodes] event %v\n", event)
+			//log.Printf("[handleWatchNodes] event object %v\n", event.Object)
 			eventCount += 1
 
 			switch event.Type {

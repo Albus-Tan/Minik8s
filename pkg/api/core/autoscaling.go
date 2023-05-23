@@ -270,7 +270,7 @@ const (
 type HorizontalPodAutoscalerBehavior struct {
 	// scaleUp is scaling policy for scaling Up.
 	// If not set, the default value is the higher of:
-	//   * increase no more than 4 pods per 60 seconds
+	//   * increase no more than 1 pod per 15 seconds
 	//   * double the number of pods per 60 seconds
 	// No stabilization is used.
 	// +optional
@@ -281,6 +281,39 @@ type HorizontalPodAutoscalerBehavior struct {
 	// the last 300sec is used).
 	// +optional
 	ScaleDown *HPAScalingRules `json:"scaleDown,omitempty"`
+}
+
+func DefaultScaleUpRule() (r *HPAScalingRules) {
+	upPolicies := make([]HPAScalingPolicy, 2)
+	upPolicies[0] = HPAScalingPolicy{
+		Type:          PercentScalingPolicy,
+		Value:         100,
+		PeriodSeconds: 60,
+	}
+	upPolicies[1] = HPAScalingPolicy{
+		Type:          PodsScalingPolicy,
+		Value:         1,
+		PeriodSeconds: 15,
+	}
+	return &HPAScalingRules{
+		StabilizationWindowSeconds: 0,
+		SelectPolicy:               MaxPolicySelect,
+		Policies:                   upPolicies,
+	}
+}
+
+func DefaultScaleDownRule() (r *HPAScalingRules) {
+	downPolicies := make([]HPAScalingPolicy, 1)
+	downPolicies[0] = HPAScalingPolicy{
+		Type:          PercentScalingPolicy,
+		Value:         100,
+		PeriodSeconds: 15,
+	}
+	return &HPAScalingRules{
+		StabilizationWindowSeconds: 300,
+		SelectPolicy:               MinPolicySelect,
+		Policies:                   downPolicies,
+	}
 }
 
 // ScalingPolicySelect is used to specify which policy should be used while scaling in a certain direction
