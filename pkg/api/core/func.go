@@ -93,7 +93,8 @@ func (f *Func) DeleteOwnerReference(uid types.UID) {
 
 type FuncSpec struct {
 	// Name is unique for Func, should be same as Name in ObjectMeta field
-	Name string `json:"name"`
+	Name           string `json:"name"`
+	ServiceAddress string `json:"serviceAddress"`
 
 	PreRun   string `json:"preRun"`
 	Function string `json:"function"`
@@ -102,7 +103,10 @@ type FuncSpec struct {
 }
 
 type FuncStatus struct {
-	InstanceId string `json:"instanceId,omitempty"`
+	ServiceId    types.UID  `json:"serviceId,omitempty"`
+	ReplicaSetId types.UID  `json:"replicaSetId,omitempty"`
+	Counter      int        `json:"counter,omitempty"`
+	TimeStamp    types.Time `json:"timeStamp,omitempty"`
 }
 
 func (f *FuncStatus) JsonUnmarshal(data []byte) error {

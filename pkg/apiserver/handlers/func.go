@@ -164,6 +164,8 @@ func getFuncTemplate(c *gin.Context) (funcTemplate *core.Func, err error) {
 
 func createPod(newPod *core.Pod, objectUID types.UID) (resourceVersion string, err error) {
 	newPod.SetUID(objectUID)
+	etcd.VLock.Lock()
+	defer etcd.VLock.Unlock()
 	// set object ResourceVersion
 	createVersion := etcd.Rvm.GetNextResourceVersion()
 	newPod.SetResourceVersion(createVersion)
