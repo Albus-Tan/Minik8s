@@ -56,6 +56,15 @@ const (
 )
 
 /*--------------- Heartbeat ---------------*/
-const HeartbeatInterval = time.Duration(10) * time.Second
-const HeartbeatDeadInterval = time.Duration(90) * time.Second
-const HeartbeatCheckInterval = time.Duration(15) * time.Second
+const (
+	HeartbeatInterval      = time.Duration(10) * time.Second
+	HeartbeatDeadInterval  = time.Duration(90) * time.Second
+	HeartbeatCheckInterval = time.Duration(15) * time.Second
+)
+
+/*--------------- Serverless ---------------*/
+const (
+	FuncDefaultInitInstanceNum = 0  // Default instance number when func template is created
+	FuncDefaultMaxInstanceNum  = 10 // Default max instance number for each func template
+	FuncDefaultMinInstanceNum  = 0  // Default min instance number for each func template
+)

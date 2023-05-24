@@ -37,6 +37,26 @@ func HandleGetFuncTemplates(c *gin.Context) {
 	handleGetObjects(c, types.FuncTemplateObjectType)
 }
 
+func HandleWatchFuncTemplate(c *gin.Context) {
+	resourceURL := api.FuncTemplatesURL + c.Param("name")
+	handleWatchObjectAndStatus(c, types.FuncTemplateObjectType, resourceURL)
+}
+
+func HandleWatchFuncTemplates(c *gin.Context) {
+	resourceURL := api.FuncTemplatesURL
+	handleWatchObjectsAndStatus(c, types.FuncTemplateObjectType, resourceURL)
+}
+
+func HandleGetFuncTemplateStatus(c *gin.Context) {
+	resourceURL := api.FuncTemplatesURL + c.Param("name")
+	handleGetObjectStatus(c, types.FuncTemplateObjectType, resourceURL)
+}
+
+func HandlePutFuncTemplateStatus(c *gin.Context) {
+	etcdURL := api.FuncTemplatesURL + c.Param("name")
+	handlePutObjectStatus(c, types.FuncTemplateObjectType, etcdURL)
+}
+
 /*--------------------- Function Instance (For User) ---------------------*/
 
 // HandleFuncCall Create a Function Instance (run function)
@@ -162,6 +182,10 @@ func getFuncTemplate(c *gin.Context) (funcTemplate *core.Func, err error) {
 	return nil, errors.New("getFuncTemplate failed\n")
 }
 
+// createPod directly create new pod, and add it to etcd
+// The pod is not guaranteed running after the function return,
+// it will be scheduled and then run by kubelet.
+// Used for serverless v1
 func createPod(newPod *core.Pod, objectUID types.UID) (resourceVersion string, err error) {
 	newPod.SetUID(objectUID)
 	etcd.VLock.Lock()
@@ -187,7 +211,24 @@ func createPod(newPod *core.Pod, objectUID types.UID) (resourceVersion string, e
 	}
 }
 
+// Used for serverless v2
 func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string) {
+	doInsideFuncCallV2(instanceId, funcTemplate, args)
+}
+
+// Used for serverless v2
+func doInsideFuncCallV2(instanceId string, funcTemplate *core.Func, args string) {
+
+	// TODO @wjr for serverless v2, redirect http request to service,
+	// 	use loop to wait for pod running
+
+	logger.ApiServerLogger.Printf(
+		"[apiserver] doInsideFuncCall v2: for instanceId %v, redirect to service UID %v of func %v",
+		instanceId, funcTemplate.Status.ServiceUID, funcTemplate.Spec.Name)
+}
+
+// Used for serverless v1
+func doInsideFuncCallV1(instanceId string, funcTemplate *core.Func, args string) {
 
 	newPod := generate.EmptyPod()
 
@@ -242,6 +283,7 @@ func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string) {
 		RestartPolicy: core.RestartPolicyNever,
 	}
 
+	// Used for serverless v1
 	// create pod
 	_, err := createPod(newPod, objectUID)
 	if err != nil {
@@ -249,6 +291,6 @@ func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string) {
 	}
 
 	logger.ApiServerLogger.Printf(
-		"[apiserver] doInsideFuncCall: for instanceId %v, create pod UID %v of func %v",
+		"[apiserver] doInsideFuncCall v1: for instanceId %v, create pod UID %v of func %v",
 		instanceId, objectUID, funcTemplate.Spec.Name)
 }

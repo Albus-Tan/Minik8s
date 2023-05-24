@@ -85,8 +85,12 @@ const (
 // Serverless
 const (
 	// FuncTemplate(s)URL Function Template
-	FuncTemplatesURL = "/api/funcs/template/"
-	FuncTemplateURL  = "/api/funcs/template/:name" // name here is func actual name, not template uid
+	FuncTemplatesURL      = "/api/funcs/template/"
+	FuncTemplateURL       = "/api/funcs/template/:name" // name here is func actual name, not template uid
+	WatchFuncTemplatesURL = "/api/watch/funcs/template"
+	WatchFuncTemplateURL  = "/api/watch/funcs/template/:name"  // name here is func actual name, not template uid
+	FuncTemplateStatusURL = "/api/funcs/template/:name/status" // name here is func actual name, not template uid
+
 	// Func(s)URL Function Instance and real Call
 	FuncURL             = "/api/funcs/"
 	FuncCallURL         = "/api/funcs/:name"     // name here is func actual name, not template uid

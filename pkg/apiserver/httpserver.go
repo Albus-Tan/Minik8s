@@ -291,6 +291,19 @@ func (h httpServer) BindHandlers() {
 	// List or watch objects of kind Function Template
 	// GET /api/funcs/template
 	h.router.GET(api.FuncTemplatesURL, handlers.HandleGetFuncTemplates)
+	// Watch changes to an object of kind FuncTemplate
+	// GET /api/watch/funcs/template/{name}
+	h.router.GET(api.WatchFuncTemplateURL, handlers.HandleWatchFuncTemplate)
+	// Watch individual changes to a list of FuncTemplate
+	// GET /api/watch/funcs/template
+	h.router.GET(api.WatchFuncTemplatesURL, handlers.HandleWatchFuncTemplates)
+	/*--------------------- FuncTemplate Status ---------------------*/
+	// Read status of the specified FuncTemplate
+	// GET /api/funcs/template/{name}/status
+	h.router.GET(api.FuncTemplateStatusURL, handlers.HandleGetFuncTemplateStatus)
+	// Replace status of the specified FuncTemplate
+	// PUT /api/funcs/template/{name}/status
+	h.router.PUT(api.FuncTemplateStatusURL, handlers.HandlePutFuncTemplateStatus)
 
 	/*--------------------- Function Instance (For User) ---------------------*/
 	// Create a Function Instance (run function)
