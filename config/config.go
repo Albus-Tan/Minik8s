@@ -68,3 +68,10 @@ const (
 	FuncDefaultMaxInstanceNum  = 10 // Default max instance number for each func template
 	FuncDefaultMinInstanceNum  = 0  // Default min instance number for each func template
 )
+
+const (
+	FuncCallColdBootWait           = time.Duration(3) * time.Second
+	FuncInstanceScaleDownNum       = 1
+	FuncInstanceScaleDownInterval  = time.Duration(60) * time.Second
+	FuncInstanceScaleCheckInterval = time.Duration(10) * time.Second
+)

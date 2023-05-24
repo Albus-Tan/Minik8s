@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
+	"minik8s/config"
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/generate"
@@ -13,6 +14,7 @@ import (
 	"minik8s/pkg/logger"
 	"minik8s/utils"
 	"net/http"
+	"time"
 )
 
 /*--------------------- FuncTemplate ---------------------*/
@@ -85,7 +87,7 @@ func HandleFuncCall(c *gin.Context) {
 
 	// call function
 	// request body used as function args
-	doInsideFuncCall(instanceId, funcTemplate, string(buf))
+	doInsideFuncCall(instanceId, funcTemplate, string(buf), c)
 
 	// return instanceId
 	c.JSON(http.StatusOK, gin.H{"status": "OK", "id": instanceId})
@@ -155,11 +157,57 @@ func HandleInsideFuncCall(c *gin.Context) {
 
 	// call function
 	// request body used as function args
-	doInsideFuncCall(instanceId, funcTemplate, string(buf))
+	doInsideFuncCall(instanceId, funcTemplate, string(buf), c)
 
 	// return instanceId
 	c.JSON(http.StatusOK, gin.H{"status": "OK", "id": instanceId})
 
+}
+
+func updateFuncTemplate(c *gin.Context, funcTemplate *core.Func) error {
+
+	resourceURL := api.FuncTemplatesURL + c.Param("name")
+
+	// check if FuncTemplate exist
+	has, versionHas, err := etcd.HasWithVersion(resourceURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return err
+	}
+	if !has {
+		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": fmt.Sprintf("No such func template")})
+		return err
+	}
+
+	// get object old version
+	oldVersion := funcTemplate.GetResourceVersion()
+	if versionHas != oldVersion {
+		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version %v unmatch current version %v, func template has been modified by others, please GET for the new version and retry PUT operation", oldVersion, versionHas)})
+		return err
+	}
+
+	// lock for version get, set and store
+	etcd.VLock.Lock()
+	defer etcd.VLock.Unlock()
+
+	// update object new version
+	funcTemplate.SetResourceVersion(etcd.Rvm.GetNextResourceVersion())
+
+	buf, err := funcTemplate.JsonMarshal()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+		return err
+	}
+
+	// put/update {ApiObject} info into etcd
+	err, _, success := etcd.CheckVersionPut(resourceURL, string(buf), oldVersion)
+	if !success {
+		c.JSON(http.StatusConflict, gin.H{"status": "FAILED", "error": fmt.Sprintf("Old version unmatch current version, func template has been modified by others, please GET for the new version and retry PUT operation")})
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "ERR", "error": err.Error()})
+	}
+
+	return nil
 }
 
 func getFuncTemplate(c *gin.Context) (funcTemplate *core.Func, err error) {
@@ -212,19 +260,46 @@ func createPod(newPod *core.Pod, objectUID types.UID) (resourceVersion string, e
 }
 
 // Used for serverless v2
-func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string) {
-	doInsideFuncCallV2(instanceId, funcTemplate, args)
+func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string, c *gin.Context) {
+	doInsideFuncCallV2(instanceId, funcTemplate, args, c)
 }
 
 // Used for serverless v2
-func doInsideFuncCallV2(instanceId string, funcTemplate *core.Func, args string) {
+func doInsideFuncCallV2(instanceId string, funcTemplate *core.Func, args string, c *gin.Context) {
+
+	// modify timestamp and counter in status
+	originNum := funcTemplate.Status.Counter
+	instanceNum := funcTemplate.Status.Counter
+	maxInstanceNum := config.FuncDefaultMaxInstanceNum
+	if funcTemplate.Spec.MaxInstanceNum != nil {
+		maxInstanceNum = *funcTemplate.Spec.MaxInstanceNum
+	}
+	if instanceNum < maxInstanceNum {
+		instanceNum += 1
+	}
+	funcTemplate.Status.Counter = instanceNum
+	funcTemplate.Status.TimeStamp = time.Now()
+
+	err := updateFuncTemplate(c, funcTemplate)
+	if err != nil {
+		logger.ApiServerLogger.Printf(
+			"[apiserver] updateFuncTemplate failed: for instanceId %v of func %v, err: %v",
+			instanceId, funcTemplate.Spec.Name, err)
+		return
+	}
+
+	if originNum == 0 {
+		// if there were no instance before, wait some time for instance cold boot
+		time.Sleep(config.FuncCallColdBootWait)
+	}
 
 	// TODO @wjr for serverless v2, redirect http request to service,
 	// 	use loop to wait for pod running
 
 	logger.ApiServerLogger.Printf(
-		"[apiserver] doInsideFuncCall v2: for instanceId %v, redirect to service UID %v of func %v",
+		"[apiserver] doInsideFuncCall v2 success: for instanceId %v, redirect to service UID %v of func %v",
 		instanceId, funcTemplate.Status.ServiceUID, funcTemplate.Spec.Name)
+
 }
 
 // Used for serverless v1

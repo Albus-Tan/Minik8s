@@ -2,6 +2,7 @@ package serverless
 
 import (
 	"context"
+	"math"
 	"minik8s/config"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/generate"
@@ -59,15 +60,22 @@ type serverlessController struct {
 
 func (sc *serverlessController) Run(ctx context.Context) {
 
+	logger.ServerlessControllerLogger.Printf("[ServerlessController] start\n")
+
 	go func() {
-		logger.ServerlessControllerLogger.Printf("[ServerlessController] start\n")
-		defer logger.ServerlessControllerLogger.Printf("[ServerlessController] finish\n")
-
+		defer logger.ServerlessControllerLogger.Printf("[ServerlessController] worker finish\n")
 		sc.runWorker(ctx)
-
-		//wait for controller manager stop
+		// wait for controller manager stop
 		<-ctx.Done()
 	}()
+
+	go func() {
+		defer logger.ServerlessControllerLogger.Printf("[ServerlessController] periodicallyCheckFuncInstanceScale finish\n")
+		sc.periodicallyCheckFuncInstanceScale(ctx)
+		// wait for controller manager stop
+		<-ctx.Done()
+	}()
+
 	return
 }
 
@@ -76,22 +84,55 @@ func (sc *serverlessController) enqueueFunc(f *core.Func) {
 	logger.ServerlessControllerLogger.Printf("enqueueFunc name %s\n", f.Spec.Name)
 }
 
+func (sc *serverlessController) processFuncStatusChange(oldFunc, curFunc *core.Func) error {
+	// check if Counter in status change
+	if oldFunc.Status.Counter != curFunc.Status.Counter {
+		// modify rs replicas spec
+		rsItem, err := sc.ReplicaSetClient.Get(curFunc.Status.ReplicaSetUID)
+		if err != nil {
+			return err
+		}
+
+		rs := rsItem.(*core.ReplicaSet)
+		rs.Spec.Replicas = int32(curFunc.Status.Counter)
+
+		// update rs Replicas number
+		err = sc.updateRS(rs)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (sc *serverlessController) updateFuncTemplate(old, cur interface{}) {
 
 	oldFunc := old.(*core.Func)
 	curFunc := cur.(*core.Func)
+	logger.ServerlessControllerLogger.Printf("Updating %s %s/%s\n", sc.Kind, curFunc.Namespace, curFunc.Name)
+
+	if !reflect.DeepEqual(oldFunc.Status, curFunc.Status) {
+		// deal with status change
+		logger.ServerlessControllerLogger.Printf("status change: %s %s/%s\n", sc.Kind, curFunc.Namespace, curFunc.Name)
+		err := sc.processFuncStatusChange(oldFunc, curFunc)
+		if err != nil {
+			logger.ServerlessControllerLogger.Printf("processFuncStatusChange err: %v\n", err)
+		}
+	}
 
 	// if only status change, ignore
 	if reflect.DeepEqual(oldFunc.Spec, curFunc.Spec) {
+		logger.ServerlessControllerLogger.Printf("spec not change: %s %s/%s\n", sc.Kind, curFunc.Namespace, curFunc.Name)
 		return
 	}
+
+	logger.ServerlessControllerLogger.Printf("spec change, delete old and create new: %s %s/%s\n", sc.Kind, curFunc.Namespace, curFunc.Name)
 
 	// TODO: better update logic
 	// delete service and rs of old template
 	sc.deleteFuncTemplate(old)
 
 	// recreate service and rs for new template
-	logger.ServerlessControllerLogger.Printf("Updating %s %s/%s\n", sc.Kind, curFunc.Namespace, curFunc.Name)
 	sc.enqueueFunc(curFunc)
 }
 
@@ -122,7 +163,7 @@ func (sc *serverlessController) deleteFuncTemplate(obj interface{}) {
 
 }
 
-const defaultWorkeFuncleepInterval = time.Duration(3) * time.Second
+const defaultWorkerSleepInterval = time.Duration(3) * time.Second
 
 func (sc *serverlessController) runWorker(ctx context.Context) {
 	//go wait.UntilWithContext(ctx, sc.worker, time.Second)
@@ -134,7 +175,54 @@ func (sc *serverlessController) runWorker(ctx context.Context) {
 		default:
 			for sc.processNextWorkItem() {
 			}
-			time.Sleep(defaultWorkeFuncleepInterval)
+			time.Sleep(defaultWorkerSleepInterval)
+		}
+	}
+}
+
+func (sc *serverlessController) periodicallyCheckFuncInstanceScale(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			logger.ServerlessControllerLogger.Printf("[periodicallyCheckFuncInstanceScale] ctx.Done() received, worker of ServerlessController exit\n")
+			return
+		default:
+			sc.checkFuncInstanceScale()
+			time.Sleep(config.FuncInstanceScaleCheckInterval)
+		}
+	}
+}
+
+func (sc *serverlessController) checkFuncInstanceScale() {
+	// Get all func template
+	fList := sc.FuncTemplateInformer.List()
+	for _, fItem := range fList {
+		fTemplate := fItem.(*core.Func)
+		if time.Since(fTemplate.Status.TimeStamp) > config.FuncInstanceScaleDownInterval {
+			// time since last call has pass FuncInstanceScaleDownInterval, scale down
+			currentInstanceNum := fTemplate.Status.Counter
+
+			minInstanceNum := config.FuncDefaultMinInstanceNum
+			if fTemplate.Spec.MinInstanceNum != nil {
+				minInstanceNum = *fTemplate.Spec.MinInstanceNum
+			}
+			if currentInstanceNum <= minInstanceNum {
+				// current instance num not enough, do not scale down
+				continue
+			}
+
+			// scale down
+			desiredInstanceNum := math.Min(float64(currentInstanceNum-config.FuncInstanceScaleDownNum), float64(minInstanceNum))
+
+			fTemplate.Status.Counter = int(desiredInstanceNum)
+			fTemplate.Status.TimeStamp = time.Now()
+
+			err := sc.updateFuncStatus(fTemplate)
+			if err != nil {
+				logger.ServerlessControllerLogger.Printf("[checkFuncInstanceScale] scale down fail, err updateFuncStatus: %v\n", err)
+			} else {
+				logger.ServerlessControllerLogger.Printf("[checkFuncInstanceScale] scale down success for func %v, current instance num %v\n", fTemplate.Spec.Name, fTemplate.Status.Counter)
+			}
 		}
 	}
 }
@@ -298,9 +386,26 @@ func (sc *serverlessController) createReplicaSetForFunc(funcTemplate *core.Func,
 	return resp.UID, nil
 }
 
-func (sc *serverlessController) updateFuncStatus(funcTemplate *core.Func, rsUID types.UID, svcUID types.UID) error {
-	funcTemplate.Status.ReplicaSetUID = rsUID
-	funcTemplate.Status.ServiceUID = svcUID
+func (sc *serverlessController) updateRS(rs *core.ReplicaSet) error {
+
+	_, _, err := sc.ReplicaSetClient.Put(rs.UID, rs)
+	times := 0
+	for err != nil {
+		times += 1
+		if times > defaultRetryTimes {
+			logger.ServerlessControllerLogger.Printf("[updateRS] updateRS failed, up to retry times limit\n")
+			return err
+		}
+		time.Sleep(defaultCreateRetryTime)
+		logger.ServerlessControllerLogger.Printf("[updateRS] updateRS failed, retry...\n")
+		_, _, err = sc.ReplicaSetClient.Put(rs.UID, rs)
+	}
+	logger.ServerlessControllerLogger.Printf("[updateRS] updateRS for rs %v success\n", rs.UID)
+	return nil
+}
+
+func (sc *serverlessController) updateFuncStatus(funcTemplate *core.Func) error {
+
 	_, _, err := sc.FuncTemplateClient.Put(funcTemplate.Spec.Name, funcTemplate)
 	times := 0
 	for err != nil {
@@ -367,8 +472,14 @@ func (sc *serverlessController) processFuncCreate(funcTemplate *core.Func) error
 		return err
 	}
 
+	// modify func status
+	funcTemplate.Status.ReplicaSetUID = rsUID
+	funcTemplate.Status.ServiceUID = svcUID
+	funcTemplate.Status.Counter = initReplicasNum
+	funcTemplate.Status.TimeStamp = time.Now() // init timestamp by current time
+
 	// update func template
-	err = sc.updateFuncStatus(funcTemplate, rsUID, svcUID)
+	err = sc.updateFuncStatus(funcTemplate)
 	if err != nil {
 		return err
 	}
