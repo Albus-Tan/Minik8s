@@ -2,9 +2,13 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+	"log"
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
+	"minik8s/pkg/apiserver/etcd"
+	"sort"
+	"strings"
 )
 
 /*--------------------- DNS ---------------------*/
@@ -52,14 +56,29 @@ func HandlePutDNSStatus(c *gin.Context) {
 func handleAddCoreDnsConfig(dns *core.DNS) {
 
 	// handlePutCoreDnsConfig(key, val string)
+	e := strings.Split(dns.Spec.Hostname, `.`)
+	sort.Sort(sort.Reverse(sort.StringSlice(e)))
+	key := strings.Join(e, `/`)
 
-	// err, _ := etcd.Put(key, val)
-	//	return err
+	//"host":"${hostname}"
+	val := "{\"host:\": \"" + dns.Spec.ServiceAddress + "\"}"
+	err, _ := etcd.Put(key, val)
+	if err != nil {
+		log.Println(err.Error())
+	}
 
 }
 
 func handleDeleteCoreDnsConfig(dns *core.DNS) {
 	// delete config
 
-	// err, _ := etcd.Delete(key)
+	e := strings.Split(dns.Spec.Hostname, `.`)
+	sort.Sort(sort.Reverse(sort.StringSlice(e)))
+	key := strings.Join(e, `/`)
+
+	//"host":"${hostname}"
+	err := etcd.Delete(key)
+	if err != nil {
+		log.Println(err.Error())
+	}
 }

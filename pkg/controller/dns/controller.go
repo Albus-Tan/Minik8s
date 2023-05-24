@@ -3,6 +3,8 @@ package dns
 import (
 	"context"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/generate"
+	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/controller/cache"
@@ -78,7 +80,14 @@ func (dnsc *dnsController) deleteDNS(obj interface{}) {
 
 	logger.DNSControllerLogger.Printf("Deleting %s, uid %s\n", dnsc.Kind, DNS.UID)
 
-	// TODO directly delete corresponding apiobject
+	_, _, err := dnsc.ServiceClient.Delete(DNS.Status.ServiceUID)
+	if err != nil {
+		return
+	}
+	_, _, err = dnsc.PodClient.Delete(DNS.Status.PodUID)
+	if err != nil {
+		return
+	}
 
 }
 
@@ -124,5 +133,49 @@ func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 	// TODO
 	// 	process dns create event
 
+	pod := generate.EmptyPod()
+	pod.Name = "dns-" + dns.Name
+	pod.Spec = core.PodSpec{
+		Containers: []core.Container{{
+			Name:            "gateway-" + dns.UID,
+			Image:           "",  //TODO
+			Env:             nil, //TODO
+			ImagePullPolicy: core.PullIfNotPresent,
+		}},
+		RestartPolicy: core.RestartPolicyAlways,
+	}
+	pod.Labels = map[string]string{
+		"_gateway": dns.Name,
+	}
+	_, pr, err := dnsc.PodClient.Post(pod)
+	if err != nil {
+		return err
+	}
+	svc := &core.Service{
+		TypeMeta: meta.CreateTypeMeta(types.ServiceObjectType),
+		ObjectMeta: meta.ObjectMeta{
+			Name: "gateway-" + dns.Name,
+		},
+		Spec: core.ServiceSpec{
+			Ports:     nil,
+			Selector:  nil,
+			ClusterIP: "",
+			Type:      "",
+		},
+		Status: core.ServiceStatus{},
+	}
+	_, sr, err := dnsc.ServiceClient.Post(svc)
+	if err != nil {
+		return err
+	}
+
+	dns.Status.PodUID = pr.UID
+	dns.Status.ServiceUID = sr.UID
+	_, _, err = dnsc.DnsClient.Put(dns.UID, dns)
+	if err != nil {
+		return err
+	}
+	//TODO delete service use uid saved in status
+	//TODO delete pod use uid saved in status
 	return nil
 }

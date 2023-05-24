@@ -92,8 +92,9 @@ func (j *DNS) DeleteOwnerReference(uid types.UID) {
 }
 
 type DnsSpec struct {
-	Hostname string       `json:"hostname,omitempty"`
-	Mappings []DnsMapping `json:"mappings,omitempty"`
+	ServiceAddress string       `json:"service-address"`
+	Hostname       string       `json:"hostname,omitempty"`
+	Mappings       []DnsMapping `json:"mappings,omitempty"`
 }
 
 type DnsMapping struct {
@@ -102,6 +103,8 @@ type DnsMapping struct {
 }
 
 type DnsStatus struct {
+	ServiceUID string `json:"service-uid,omitempty"`
+	PodUID     string `json:"pod-uid,omitempty"`
 }
 
 func (j *DnsStatus) JsonUnmarshal(data []byte) error {
