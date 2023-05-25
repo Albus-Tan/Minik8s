@@ -45,6 +45,12 @@ func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 	logger.ApiServerLogger.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
 	newObject.SetUID(objectUID)
 
+	// process dns config
+	if ty == types.DnsObjectType {
+		dns := newObject.(*core.DNS)
+		handleAddCoreDnsConfig(dns)
+	}
+
 	// lock for version get, set and store
 	etcd.VLock.Lock()
 	defer etcd.VLock.Unlock()
@@ -66,12 +72,6 @@ func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 		etcdPath += f.Spec.Name
 	} else {
 		etcdPath += objectUID
-	}
-
-	// process dns config
-	if ty == types.DnsObjectType {
-		dns := newObject.(*core.DNS)
-		handleAddCoreDnsConfig(dns)
 	}
 
 	// put/update {ApiObject} info into etcd
