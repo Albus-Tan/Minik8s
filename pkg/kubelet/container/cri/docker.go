@@ -255,6 +255,18 @@ func (c *dockerClient) handleImagePull(ctx context.Context, cnt core.Container) 
 		fallthrough
 	case core.PullIfNotPresent:
 		//FIXME: check if present
+		images, err := c.Client.ImageList(ctx, dt.ImageListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, i := range images {
+			for _, t := range i.RepoTags {
+				if t == cnt.Image {
+					return nil
+				}
+
+			}
+		}
 		fallthrough
 	case core.PullAlways:
 		out, err := c.Client.ImagePull(ctx, cnt.Image, dt.ImagePullOptions{})

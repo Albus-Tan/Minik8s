@@ -174,6 +174,8 @@ func GetWatchApiObjectsURL(ty types.ApiObjectType) string {
 		return api.WatchHeartbeatsURL
 	case types.DnsObjectType:
 		return api.WatchDNSsURL
+	case types.FuncTemplateObjectType:
+		return api.WatchFuncTemplatesURL
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}

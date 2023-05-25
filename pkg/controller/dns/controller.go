@@ -9,6 +9,7 @@ import (
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/pkg/controller/cache"
 	"minik8s/pkg/logger"
+	"strings"
 	"time"
 )
 
@@ -130,18 +131,27 @@ func (dnsc *dnsController) processNextWorkItem() bool {
 
 func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 
-	// TODO
-	// 	process dns create event
+	c := make([]string, 0)
+	for _, m := range dns.Spec.Mappings {
+		c = append(c, m.Path+"#"+m.Address)
+	}
 
 	pod := generate.EmptyPod()
-	pod.Name = "dns-" + dns.Name
+	pod.Name = "dns-" + dns.UID
 	pod.Spec = core.PodSpec{
-		Containers: []core.Container{{
-			Name:            "gateway-" + dns.UID,
-			Image:           "",  //TODO
-			Env:             nil, //TODO
-			ImagePullPolicy: core.PullIfNotPresent,
-		}},
+		Containers: []core.Container{
+			{
+				Name:  "gateway-" + dns.UID,
+				Image: "lwsg/gateway-runner:0.4",
+				Env: []core.EnvVar{
+					{
+						Name:  "_CONF",
+						Value: strings.Join(c, `\n`),
+					},
+				},
+				ImagePullPolicy: core.PullIfNotPresent,
+			},
+		},
 		RestartPolicy: core.RestartPolicyAlways,
 	}
 	pod.Labels = map[string]string{
@@ -157,10 +167,18 @@ func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 			Name: "gateway-" + dns.Name,
 		},
 		Spec: core.ServiceSpec{
-			Ports:     nil,
-			Selector:  nil,
-			ClusterIP: "",
-			Type:      "",
+			Ports: []core.ServicePort{
+				{
+					Name:       "nginx",
+					Port:       80,
+					TargetPort: 80,
+				},
+			},
+			Selector: map[string]string{
+				"_gateway": dns.Name,
+			},
+			ClusterIP: dns.Spec.ServiceAddress,
+			Type:      core.ServiceTypeClusterIP,
 		},
 		Status: core.ServiceStatus{},
 	}
@@ -169,9 +187,18 @@ func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 		return err
 	}
 
-	dns.Status.PodUID = pr.UID
-	dns.Status.ServiceUID = sr.UID
-	_, _, err = dnsc.DnsClient.Put(dns.UID, dns)
+	s := 409
+	for s != 200 {
+		obj, err := dnsc.DnsClient.Get(dns.UID)
+		if err != nil {
+			return nil
+		}
+		dns = obj.(*core.DNS)
+		dns.Status.PodUID = pr.UID
+		dns.Status.ServiceUID = sr.UID
+		//dns.SetResourceVersion(etcd.Rvm.GetNextResourceVersion())
+		s, _, err = dnsc.DnsClient.Put(dns.UID, dns)
+	}
 	if err != nil {
 		return err
 	}
