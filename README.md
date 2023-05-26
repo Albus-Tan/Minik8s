@@ -20,13 +20,12 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
   - ControllerManager：负责管理各个 Controller
     - ReplicaSetController：负责实现并管理 ReplicaSet
     - HorizontalController：负责实现并管理 HPA
-    - ServiceController：负责实现并管理 Service
     - DnsController：负责实现并管理 Dns
     - ServerlessController：负责实现 Serverless 的函数调用及实例管理等
   - GpuServer：管理 Gpu Job
 - 工作节点 Worker
   - Kubelet：在每个节点上控制管理 Pod 生命周期
-  - Kubeproxy：管理节点网络
+  - Kubeproxy：管理节点网络以及 service
 - 其他
   - Kubectl：命令行工具，用于与控制面交互
   - ApiClient：能够与 ApiServer 交互通信的 Client
@@ -52,7 +51,6 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
         - CadvisorClient：与节点上的 cadvisor 进行交互，获取资源占用信息
     - DnsController：管理实现 Dns 功能
     - ServerlessController：负责实现 Serverless 函数的实例生命周期管理等
-    - ServiceController：负责实现并管理 Service
   - GpuServer：负责提交 Gpu 任务至云平台，根据配置进行脚本生成，以及下载反馈结果
     - JobClient：负责通过 ssh 与云平台进行交互
   - HeartbeatWatcher：负责监听工作节点的 heartbeat，并对状态异常的工作节点进行处理
@@ -61,8 +59,8 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
   - Kubelet：每个从节点 Node 的管理者，与主节点交互，控制管理 Pod 生命周期
     - PodManager
     - CriClient
-  - Kubeproxy：管理节点网络，专门负责容器网络的部分，以及 Node 间连接
-    - ServiceManager
+  - Kubeproxy：管理节点网络，专门负责容器网络的部分，以及 Node 间连接，实现并管理 Service
+    - ServiceManager：负责实现并管理 Service
     - IpvsClient
 - 其他
   - Kubectl：命令行工具，用于与控制面交互
