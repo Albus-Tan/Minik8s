@@ -8,7 +8,7 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
 
 ## 架构图
 
-
+![minik8s-framework.drawio](README.assets/minik8s-framework.drawio.svg)
 
 ## 组件
 
@@ -20,6 +20,7 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
   - ControllerManager：负责管理各个 Controller
     - ReplicaSetController：负责实现并管理 ReplicaSet
     - HorizontalController：负责实现并管理 HPA
+    - ServiceController：负责实现并管理 Service
     - DnsController：负责实现并管理 Dns
     - ServerlessController：负责实现 Serverless 的函数调用及实例管理等
   - GpuServer：管理 Gpu Job
@@ -51,6 +52,7 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
         - CadvisorClient：与节点上的 cadvisor 进行交互，获取资源占用信息
     - DnsController：管理实现 Dns 功能
     - ServerlessController：负责实现 Serverless 函数的实例生命周期管理等
+    - ServiceController：负责实现并管理 Service
   - GpuServer：负责提交 Gpu 任务至云平台，根据配置进行脚本生成，以及下载反馈结果
     - JobClient：负责通过 ssh 与云平台进行交互
   - HeartbeatWatcher：负责监听工作节点的 heartbeat，并对状态异常的工作节点进行处理
@@ -72,7 +74,7 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
 
 ## 软件栈
 
-- **控制面 Master**
+- 控制面 Master
 
   - ApiServer
 
@@ -98,7 +100,7 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
 
     sftp: https://github.com/pkg/sftp
 
-- **工作节点 Worker**
+- 工作节点 Worker
 
   - Kubelet
 
@@ -198,6 +200,8 @@ type 有下面几类
 API 对象的设计部分参考 kubernetes
 
 > https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/api/core/v1/types.go
+
+
 
 
 
