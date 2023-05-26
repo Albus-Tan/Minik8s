@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"github.com/gin-gonic/gin"
 	"log"
 	"minik8s/pkg/api"
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiserver/etcd"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 /*--------------------- DNS ---------------------*/
@@ -56,7 +57,7 @@ func handleAddCoreDnsConfig(dns *core.DNS) {
 
 	// handlePutCoreDnsConfig(key, val string)
 	e := strings.Split(dns.Spec.Hostname, `.`)
-	var re []string
+	re := []string{"/coredns"}
 	for _, s := range e {
 		re = append([]string{s}, re...)
 	}
@@ -75,7 +76,7 @@ func handleDeleteCoreDnsConfig(dns *core.DNS) {
 	// delete config
 
 	e := strings.Split(dns.Spec.Hostname, `.`)
-	var re []string
+	re := []string{"/coredns"}
 	for _, s := range e {
 		re = append([]string{s}, re...)
 	}
