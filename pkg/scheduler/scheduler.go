@@ -4,6 +4,7 @@ import (
 	"errors"
 	"golang.org/x/net/context"
 	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/api/watch"
 	"minik8s/pkg/apiclient"
@@ -340,9 +341,25 @@ func (s *Scheduler) doSchedule(newPod *core.Pod) *core.Node {
 	}
 
 	if newPod.Spec.NodeName != "" {
-		return s.doScheduleAffinity(newPod)
+		return s.doScheduleNodeAffinity(newPod)
 	} else {
-		return s.doScheduleRR()
+		var nodeScheduled *core.Node = nil
+		if newPod.Spec.Affinity != nil {
+			nodeScheduled = s.doSchedulePodAntiAffinity(newPod)
+		}
+		if nodeScheduled == nil {
+			nodeScheduled = s.doScheduleRR()
+		}
+		return nodeScheduled
+	}
+}
+
+func (s *Scheduler) moveNodeToEnd(nodeName string) {
+	no := s.getNodeInQueue(nodeName)
+	if no != nil {
+		if s.deleteNodeInQueue(no.UID) {
+			s.nodesQueue.Enqueue(no)
+		}
 	}
 }
 
@@ -365,6 +382,57 @@ func (s *Scheduler) doScheduleRR() *core.Node {
 // NodeName is a request to schedule this pod onto a specific node. If it is non-empty,
 // the scheduler simply schedules this pod onto that node, assuming that it fits resource
 // requirements.
-func (s *Scheduler) doScheduleAffinity(newPod *core.Pod) *core.Node {
+func (s *Scheduler) doScheduleNodeAffinity(newPod *core.Pod) *core.Node {
 	return s.getNodeInQueue(newPod.Spec.NodeName)
+}
+
+func (s *Scheduler) doSchedulePodAntiAffinity(newPod *core.Pod) *core.Node {
+
+	logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] start scheduling pod %v, uid %v\n", newPod.Name, newPod.UID)
+
+	newPodAnti := newPod.Spec.Affinity.PodAntiAffinity
+	var nodeNameNotToSchedule []string
+
+	// Get all pods scheduled already
+	podList, _ := s.podListWatcher.List()
+	for _, podItem := range podList.GetIApiObjectArr() {
+		pod := podItem.(*core.Pod)
+		// check affinity
+		for _, podAffinityTerm := range newPodAnti.RequiredDuringSchedulingIgnoredDuringExecution {
+			if podAffinityTerm.LabelSelector != nil {
+				logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] new pod label selector: %v, pod label %v\n", (*podAffinityTerm.LabelSelector).MatchLabels, pod.Labels)
+				isMatched := meta.MatchLabelSelector(*podAffinityTerm.LabelSelector, pod.Labels)
+				if isMatched {
+					logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] new pod can not schedule to node %v due to pod %v, uid %v\n", pod.Spec.NodeName, pod.Name, pod.UID)
+					nodeNameNotToSchedule = append(nodeNameNotToSchedule, pod.Spec.NodeName)
+				}
+			}
+		}
+	}
+
+	if len(nodeNameNotToSchedule) == 0 {
+		return nil
+	} else {
+		allNodes := s.nodesQueue.GetContent()
+		for _, n := range allNodes {
+			no := n.(*core.Node)
+			notSchedule := false
+			for _, nodeNotSchedule := range nodeNameNotToSchedule {
+				if nodeNotSchedule == no.Name {
+					logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] pod anti-affinity: no schedule to node %v\n", no.Name)
+					notSchedule = true
+					break
+				}
+			}
+			if !notSchedule {
+				// do schedule
+				logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] pod anti-affinity schedule success to node %v\n", no.Name)
+				// put node scheduled to last of rr queue
+				s.moveNodeToEnd(no.Name)
+				return no
+			}
+		}
+	}
+	logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] no nodes left to satisfy pod anti-affinity in queue, use rr instead\n")
+	return nil
 }

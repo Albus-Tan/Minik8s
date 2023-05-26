@@ -156,6 +156,10 @@ type PodSpec struct {
 
 	// TODO
 	BindPorts map[string]string `json:"bindPorts,omitempty"`
+
+	// If specified, the pod's scheduling constraints
+	// +optional
+	Affinity *Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
 }
 
 // RestartPolicy describes how the container should be restarted.
@@ -310,4 +314,36 @@ func (p *PodList) GetIApiObjectArr() (res []IApiObject) {
 		res = append(res, &itemTemp)
 	}
 	return res
+}
+
+// Affinity is a group of affinity scheduling rules.
+type Affinity struct {
+	// Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
+	// +optional
+	PodAntiAffinity PodAntiAffinity `json:"podAntiAffinity,omitempty" protobuf:"bytes,3,opt,name=podAntiAffinity"`
+}
+
+// PodAntiAffinity Pod anti affinity is a group of inter pod anti affinity scheduling rules.
+type PodAntiAffinity struct {
+	// If the anti-affinity requirements specified by this field are not met at
+	// scheduling time, the pod will not be scheduled onto the node.
+	// If the anti-affinity requirements specified by this field cease to be met
+	// at some point during pod execution (e.g. due to a pod label update), the
+	// system may or may not try to eventually evict the pod from its node.
+	// When there are multiple elements, the lists of nodes corresponding to each
+	// podAffinityTerm are intersected, i.e. all terms must be satisfied.
+	// +optional
+	RequiredDuringSchedulingIgnoredDuringExecution []PodAffinityTerm `json:"requiredDuringSchedulingIgnoredDuringExecution,omitempty" protobuf:"bytes,1,rep,name=requiredDuringSchedulingIgnoredDuringExecution"`
+}
+
+type PodAffinityTerm struct {
+	// A label query over a set of resources, in this case pods.
+	// +optional
+	LabelSelector *meta.LabelSelector `json:"labelSelector,omitempty" protobuf:"bytes,1,opt,name=labelSelector"`
+	// This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
+	// the labelSelector in the specified namespaces, where co-located is defined as running on a node
+	// whose value of the label with key topologyKey matches that of any node on which any of the
+	// selected pods is running.
+	// Empty topologyKey is not allowed.
+	TopologyKey string `json:"topologyKey" protobuf:"bytes,3,opt,name=topologyKey"`
 }
