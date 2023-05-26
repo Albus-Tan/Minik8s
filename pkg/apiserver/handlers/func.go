@@ -261,7 +261,12 @@ func createPod(newPod *core.Pod, objectUID types.UID) (resourceVersion string, e
 
 // Used for serverless v2
 func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string, c *gin.Context) {
-	doInsideFuncCallV2(instanceId, funcTemplate, args, c)
+	switch funcTemplate.TypeMeta.APIVersion {
+	case "v1":
+		doInsideFuncCallV1(instanceId, funcTemplate, args)
+	case "v2":
+		doInsideFuncCallV2(instanceId, funcTemplate, args, c)
+	}
 }
 
 // Used for serverless v2
@@ -318,7 +323,7 @@ func doInsideFuncCallV1(instanceId string, funcTemplate *core.Func, args string)
 		Containers: []core.Container{
 			{
 				Name:  "instance",
-				Image: "lwsg/func-runner:0.7",
+				Image: "lwsg/func-runner:0.10",
 				Env: []core.EnvVar{
 					{
 						Name:  "_API_SERVER",
