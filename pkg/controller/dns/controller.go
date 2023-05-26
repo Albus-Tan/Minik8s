@@ -155,7 +155,7 @@ func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 		RestartPolicy: core.RestartPolicyAlways,
 	}
 	pod.Labels = map[string]string{
-		"_gateway": dns.Name,
+		"_gateway": dns.UID,
 	}
 	_, pr, err := dnsc.PodClient.Post(pod)
 	if err != nil {
@@ -164,7 +164,7 @@ func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 	svc := &core.Service{
 		TypeMeta: meta.CreateTypeMeta(types.ServiceObjectType),
 		ObjectMeta: meta.ObjectMeta{
-			Name: "gateway-" + dns.Name,
+			Name: "gateway-" + dns.UID,
 		},
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
@@ -175,7 +175,7 @@ func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 				},
 			},
 			Selector: map[string]string{
-				"_gateway": dns.Name,
+				"_gateway": dns.UID,
 			},
 			ClusterIP: dns.Spec.ServiceAddress,
 			Type:      core.ServiceTypeClusterIP,
