@@ -9,6 +9,7 @@ import (
 	"minik8s/pkg/apiclient"
 	client "minik8s/pkg/apiclient/interface"
 	"minik8s/utils"
+	"reflect"
 )
 
 func CreateWorkerNode(configFileName string) *core.Node {
@@ -18,8 +19,9 @@ func CreateWorkerNode(configFileName string) *core.Node {
 		nodeInfo:   nil,
 		ty:         config.Worker,
 	}
-	nc.initNode(configFileName)
-	nc.registerNode()
+	if nc.initNode(configFileName) {
+		nc.registerNode()
+	}
 	return nc.nodeInfo
 }
 
@@ -30,8 +32,10 @@ func CreateMasterNode() *core.Node {
 		nodeInfo:   nil,
 		ty:         config.Master,
 	}
-	nc.initNode(config.MasterNodeConfigFileName)
-	nc.registerNode()
+	if nc.initNode(config.MasterNodeConfigFileName) {
+		nc.registerNode()
+	}
+
 	return nc.nodeInfo
 }
 
@@ -50,9 +54,13 @@ type NodeCreator struct {
 	nodeInfo   *core.Node
 }
 
-func (nc *NodeCreator) initNode(configFileName string) {
+func (nc *NodeCreator) initNode(configFileName string) bool {
 
 	nc.nodeInfo = config.LoadNodeFromTemplate(configFileName)
+
+	// FIXME: get IP address of physical machine and set address field of node
+	nc.nodeInfo.Spec.Address = "localhost"
+
 	if nc.ty == config.Master {
 		nc.nodeInfo.Name = NameMaster
 	}
@@ -63,12 +71,18 @@ func (nc *NodeCreator) initNode(configFileName string) {
 		nodeList, err := nc.nodeClient.GetAll()
 		if err != nil {
 			panic(err)
-			return
+			return false
 		}
 		nodeItems := nodeList.GetIApiObjectArr()
 		for _, nodeItem := range nodeItems {
 			n := nodeItem.(*core.Node)
 			if n.Name == nc.nodeInfo.Name {
+				if reflect.DeepEqual(n.Spec, nc.nodeInfo.Spec) && reflect.DeepEqual(n.Labels, nc.nodeInfo.Labels) && reflect.DeepEqual(n.TypeMeta, nc.nodeInfo.TypeMeta) {
+					// node same with before
+					log.Printf("[initNode] config same with node(name %v uid %v) before, reuse it\n", n.Name, n.UID)
+					nc.nodeInfo = n
+					return false
+				}
 				if nc.ty == config.Master {
 					// master node exist
 					panic("master exist, can not create another")
@@ -79,6 +93,7 @@ func (nc *NodeCreator) initNode(configFileName string) {
 			}
 		}
 	}
+	return true
 }
 
 const (
@@ -103,15 +118,12 @@ func (nc *NodeCreator) generateNodeName() string {
 }
 
 func (nc *NodeCreator) registerNode() {
+	nc.nodeInfo.Status.Phase = core.NodePending
 	_, resp, err := nc.nodeClient.Post(nc.nodeInfo)
 	if err != nil {
 		panic(err)
 		return
 	}
-
-	// FIXME: get IP address of physical machine and set address field of node
-	nc.nodeInfo.Spec.Address = "localhost"
-
 	nc.nodeInfo.SetUID(resp.UID)
 	nc.nodeInfo.SetResourceVersion(resp.ResourceVersion)
 	nc.nodeInfo.Status.Phase = core.NodeRunning
