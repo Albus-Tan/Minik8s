@@ -1,0 +1,43 @@
+{
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "labels": {
+      "app": "myapp",
+      "tier": "frontend",
+      "scheduleAntiAffinity": "large"
+    },
+    "name": "myapp-schedule-large",
+    "namespace": "default"
+  },
+  "spec": {
+    "affinity": {
+      "podAntiAffinity": {
+        "requiredDuringSchedulingIgnoredDuringExecution": [
+          {
+            "labelSelector": {
+              "matchLabels": {
+                "scheduleAntiAffinity": "tiny"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "containers": [
+      {
+        "image": "nginx",
+        "imagePullPolicy": "Always",
+        "name": "nginx",
+        "ports": [
+          {
+            "containerPort": 80,
+            "protocol": "TCP"
+          }
+        ],
+        "resources": {}
+      }
+    ],
+    "restartPolicy": "Always"
+  }
+}
