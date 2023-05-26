@@ -379,7 +379,7 @@ func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
 			}
 			if pod.Spec.RestartPolicy == core.RestartPolicyAlways {
 				if err := k.criClient.ContainerStart(ctx, pod.UID+"-"+c.Name); err != nil {
-					log.Fatalf("run failed %v", err)
+					return err
 				}
 
 			}

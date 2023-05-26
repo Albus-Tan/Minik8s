@@ -14,6 +14,7 @@ import (
 	"minik8s/pkg/logger"
 	"minik8s/utils"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -300,11 +301,38 @@ func doInsideFuncCallV2(instanceId string, funcTemplate *core.Func, args string,
 
 	// TODO @wjr for serverless v2, redirect http request to service,
 	// 	use loop to wait for pod running
-
+	err = doCallRequest(funcTemplate.Spec.ServiceAddress, instanceId, args)
+	if err != nil {
+		logger.ApiServerLogger.Println("request error: ", err)
+	}
 	logger.ApiServerLogger.Printf(
 		"[apiserver] doInsideFuncCall v2 success: for instanceId %v, redirect to service UID %v of func %v",
 		instanceId, funcTemplate.Status.ServiceUID, funcTemplate.Spec.Name)
 
+}
+
+func doCallRequest(address, uid, arg string) error {
+	c := &http.Client{}
+	req, err := http.NewRequest("POST", "http://"+address+"/"+uid, strings.NewReader(arg))
+	if err != nil {
+		return err
+	}
+	res, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			return
+		}
+	}(res.Body)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(body))
+	return nil
 }
 
 // Used for serverless v1
@@ -316,8 +344,6 @@ func doInsideFuncCallV1(instanceId string, funcTemplate *core.Func, args string)
 	objectUID := utils.GenerateUID()
 	logger.ApiServerLogger.Printf("[apiserver] generate new Func Pod UID: %v", objectUID)
 
-	// TODO: @wjr fill in pod field by funcTemplate
-	// 	such as Containers, Object Meta Name etc.
 	newPod.Name = objectUID + "-" + funcTemplate.Name
 	newPod.Spec = core.PodSpec{
 		Containers: []core.Container{

@@ -139,11 +139,17 @@ func (sc *serverlessController) updateFuncTemplate(old, cur interface{}) {
 func (sc *serverlessController) addFuncTemplate(obj interface{}) {
 	f := obj.(*core.Func)
 	logger.ServerlessControllerLogger.Printf("Adding %s %s/%s\n", sc.Kind, f.Namespace, f.Name)
+	if f.APIVersion == "v1" {
+		return
+	}
 	sc.enqueueFunc(f)
 }
 
 func (sc *serverlessController) deleteFuncTemplate(obj interface{}) {
 	f := obj.(*core.Func)
+	if f.APIVersion == "v1" {
+		return
+	}
 
 	logger.ServerlessControllerLogger.Printf("Deleting %s name %s\n", sc.Kind, f.Spec.Name)
 
@@ -197,7 +203,7 @@ func (sc *serverlessController) checkFuncInstanceScale() {
 	// Get all func template
 	fList := sc.FuncTemplateInformer.List()
 	for _, fItem := range fList {
-		fTemplate := fItem.(*core.Func)
+		fTemplate := *fItem.(*core.Func)
 		if time.Since(fTemplate.Status.TimeStamp) > config.FuncInstanceScaleDownInterval {
 			// time since last call has pass FuncInstanceScaleDownInterval, scale down
 			currentInstanceNum := fTemplate.Status.Counter
@@ -217,7 +223,7 @@ func (sc *serverlessController) checkFuncInstanceScale() {
 			fTemplate.Status.Counter = int(desiredInstanceNum)
 			fTemplate.Status.TimeStamp = time.Now()
 
-			err := sc.updateFuncStatus(fTemplate)
+			err := sc.updateFuncStatus(&fTemplate)
 			if err != nil {
 				logger.ServerlessControllerLogger.Printf("[checkFuncInstanceScale] scale down fail, err updateFuncStatus: %v\n", err)
 			} else {
@@ -274,9 +280,30 @@ func (sc *serverlessController) generatePodSpecForFunc(funcTemplate *core.Func) 
 	// TODO: @ wrj fill in pod spec
 	funcPodSpec = core.PodSpec{
 		Containers: []core.Container{{
-			Name:            "gateway-" + funcTemplate.UID,
-			Image:           "",  //TODO
-			Env:             nil, //TODO
+			Name:  "func-" + funcTemplate.UID,
+			Image: "lwsg/func-server:latest",
+			Env: []core.EnvVar{
+				{
+					Name:  "_API_SERVER",
+					Value: "http://10.180.253.214:8080",
+				},
+				{
+					Name:  "_PRE_RUN",
+					Value: funcTemplate.Spec.PreRun,
+				},
+				{
+					Name:  "_FUNC",
+					Value: funcTemplate.Spec.Function,
+				},
+				{
+					Name:  "_LEFT",
+					Value: funcTemplate.Spec.Left,
+				},
+				{
+					Name:  "_RIGHT",
+					Value: funcTemplate.Spec.Right,
+				},
+			},
 			ImagePullPolicy: core.PullIfNotPresent,
 		}},
 		RestartPolicy: core.RestartPolicyAlways,
@@ -293,17 +320,23 @@ func (sc *serverlessController) createServiceForFunc(funcTemplate *core.Func, fu
 	funcService := &core.Service{
 		TypeMeta: meta.CreateTypeMeta(types.ServiceObjectType),
 		ObjectMeta: meta.ObjectMeta{
-			Name:      "gateway-" + funcTemplate.Name,
+			Name:      "func-" + funcTemplate.Name,
 			Namespace: "serverless",
 			OwnerReferences: []meta.OwnerReference{
 				funcTemplateOwnerRef,
 			},
 		},
 		Spec: core.ServiceSpec{ // TODO: @wjr add service spec
-			Ports:     nil,
-			Selector:  funcServiceLabels, // TODO: should label selector be this?
-			ClusterIP: "",
-			Type:      "",
+			Ports: []core.ServicePort{
+				{
+					Name:       "func-server",
+					Port:       80,
+					TargetPort: 80,
+				},
+			},
+			Selector:  funcServiceLabels,
+			ClusterIP: funcTemplate.Spec.ServiceAddress,
+			Type:      core.ServiceTypeClusterIP,
 		},
 		Status: core.ServiceStatus{},
 	}
@@ -424,6 +457,9 @@ func (sc *serverlessController) updateFuncStatus(funcTemplate *core.Func) error 
 
 // process func template create and spec update event
 func (sc *serverlessController) processFuncCreate(funcTemplate *core.Func) error {
+	if funcTemplate.APIVersion == "v1" {
+		return nil
+	}
 
 	funcTemplate.Name = funcTemplate.Spec.Name
 
@@ -436,12 +472,12 @@ func (sc *serverlessController) processFuncCreate(funcTemplate *core.Func) error
 
 	// labels that match pod for service
 	funcServiceLabels := map[string]string{
-		"_gateway": funcTemplate.Name,
+		"_func": funcTemplate.Name,
 	}
 
 	// labels for pod
 	funcPodLabels := map[string]string{
-		"_gateway":               funcTemplate.Name,
+		"_func":                  funcTemplate.Name,
 		"_serverless_replicaset": funcTemplate.Name,
 	}
 
