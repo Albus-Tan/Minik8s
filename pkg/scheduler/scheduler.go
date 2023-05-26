@@ -425,6 +425,10 @@ func (s *Scheduler) doSchedulePodAntiAffinity(newPod *core.Pod) *core.Node {
 				}
 			}
 			if !notSchedule {
+				// check if is master
+				for no.Name == node.NameMaster {
+					continue
+				}
 				// do schedule
 				logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] pod anti-affinity schedule success to node %v\n", no.Name)
 				// put node scheduled to last of rr queue
