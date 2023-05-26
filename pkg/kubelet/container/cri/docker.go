@@ -3,14 +3,16 @@ package cri
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
+	"minik8s/config"
+	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
+
 	dt "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"io"
-	"log"
-	"minik8s/pkg/api/core"
-	"minik8s/pkg/api/types"
 )
 
 func NewDocker() (Client, error) {
@@ -205,7 +207,7 @@ func buildSlaverHostConfig(master string, cnt core.Container) *container.HostCon
 		CapAdd:          nil,
 		CapDrop:         nil,
 		CgroupnsMode:    "",
-		DNS:             nil,
+		DNS:             []string{config.Host},
 		DNSOptions:      nil,
 		DNSSearch:       nil,
 		ExtraHosts:      nil,
