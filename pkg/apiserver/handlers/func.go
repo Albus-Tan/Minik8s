@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
 	"minik8s/config"
 	"minik8s/pkg/api"
@@ -16,6 +15,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 /*--------------------- FuncTemplate ---------------------*/
@@ -353,7 +354,7 @@ func doInsideFuncCallV1(instanceId string, funcTemplate *core.Func, args string)
 				Env: []core.EnvVar{
 					{
 						Name:  "_API_SERVER",
-						Value: "http://10.180.253.214:8080",
+						Value: config.ApiServerUrl(),
 					},
 					{
 						Name:  "_PRE_RUN",

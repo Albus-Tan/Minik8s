@@ -285,7 +285,7 @@ func (sc *serverlessController) generatePodSpecForFunc(funcTemplate *core.Func) 
 			Env: []core.EnvVar{
 				{
 					Name:  "_API_SERVER",
-					Value: "http://10.180.253.214:8080",
+					Value: config.ApiServerUrl(),
 				},
 				{
 					Name:  "_PRE_RUN",
