@@ -1,6 +1,10 @@
 # Minik8s
 
-Minik8s 是一个迷你的容器编排工具，能够在多机上对满足CRI接口的容器进行管理，支持容器生命周期管理、动态伸缩、自动扩容等基本功能。
+Minik8s 是一个类似于 [Kubernetes](https://kubernetes.io/) 的迷你容器编排工具，能够在多机上对满足 CRI 接口的容器进行管理，支持容器生命周期管理、动态伸缩、自动扩容等基本功能，并且基于 minik8s 实现了 Serverless 平台集成。
+
+# 目录
+
+[TOC]
 
 # 总体架构
 
@@ -191,17 +195,28 @@ type 有下面几类
 
 
 
-# 主要功能
-
-## API对象
-
-API 对象的设计部分参考 kubernetes
-
-> https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/api/core/v1/types.go
+# 功能介绍
 
 
 
 
+
+# 实现简述
+
+实现部分的文档可以参考以下链接
+
+- [API & API 对象](./doc/API.md)
+- [ApiServer, ApiClient 及 ListWatch](./doc/ApiServer.md)
+- [Scheduler](./doc/Scheduler.md)
+- [Controller（Informer, ReplicaSetController 及 HorizontalController）](./doc/Controller.md)
+- [Gpu Server](./doc/GPU.md)
+- [Kubelet](./doc/Kubelet.md)
+- Kubeproxy
+- [Serverless](./doc/Serverless.md)
+- [Node Manager](./doc/Node.md)
+- [CI/CD](./doc/CI CD.md)
+- [CNI](./doc/CNI.md)
+- [Test](./doc/Test.md)
 
 # 组员分工和贡献度
 
@@ -226,6 +241,95 @@ API 对象的设计部分参考 kubernetes
 - 陆胤松
   - 实现部分 kubectl 命令行工具
 
+
+
 # 安装教程
 
 - Go 开发环境及 GoLand 项目配置 https://blog.csdn.net/m0_56510407/article/details/123544438
+
+## etcd
+
+控制面 Master 节点上需要安装 etcd
+
+> 最新版本见 **[etcd](https://github.com/etcd-io/etcd)**，下载安装方式见 [install](https://etcd.io/docs/v3.5/install/)
+
+## Cadvisor
+
+每个 Worker 节点上需要安装部署 cadvisor，并在启动前启动，方可正常使用 HPA 功能
+
+**使用二进制部署**
+
+```sh
+# 下载二进制
+https://github.com/google/cadvisor/releases/latest
+# 本地运行
+./cadvisor  -port=8090 &>>/var/log/cadvisor.log
+# 查看进程信息
+ps -aux | grep cadvisor
+# 查看端口占用
+netstat -anp | grep 8090
+```
+
+**使用docker部署**
+
+```bash
+docker run \
+--volume=/:/rootfs:ro \
+--volume=/var/run:/var/run:rw \
+--volume=/sys:/sys:ro \
+--volume=/var/lib/docker/:/var/lib/docker:ro \
+--volume=/dev/disk/:/dev/disk:ro \
+--publish=8090:8090 \
+--detach=true \
+--name=cadvisor \
+google/cadvisor:latest
+```
+
+**端口转发**
+
+这样在本机上就可以看到远端机器上的 cadvisor
+
+```
+ssh -N minik8s-dev -L 8090:localhost:8090
+```
+
+## Flannel
+
+每个节点都需要通过 flannel 进行网络配置。
+
+Flannel配置第3层IPv4  overlay网络。它会创建一个大型内部网络，跨越集群中每个节点。在此overlay网络中，每个节点都有一个子网，用于在内部分配IP地址。在配置pod时，每个节点上的Docker桥接口都会为每个新容器分配一个地址。同一主机中的Pod可以使用Docker桥接进行通信，而不同主机上的pod会使用flanneld将其流量封装在UDP数据包中，以便路由到适当的目标。
+
+**参考 [Running flannel](https://github.com/flannel-io/flannel/blob/master/Documentation/running.md) Running manually 章节**
+
+若 wget 失败可以考虑手动上传文件到服务器
+
+```bash
+sudo apt install etcd
+wget https://github.com/flannel-io/flannel/releases/latest/download/flanneld-amd64 && chmod +x flanneld-amd64
+sudo ./flanneld-amd64
+```
+
+```bash
+docker run --rm --net=host quay.io/coreos/etcd
+```
+
+```bash
+docker run --rm -e ETCDCTL_API=3 --net=host quay.io/coreos/etcd etcdctl put /coreos.com/network/config '{ "Network": "10.5.0.0/16", "Backend": {"Type": "vxlan"}}'
+```
+
+**查看端口占用**
+
+```bash
+netstat -nap | grep 2380
+```
+
+**测试**
+
+```bash
+docker run -it  busybox sh
+# 查看容器IP
+$ cat /etc/hosts
+# ping
+ping -c3  10.0.5.2
+```
+
