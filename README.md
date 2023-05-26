@@ -197,7 +197,219 @@ type 有下面几类
 
 # 功能介绍
 
+## 多机 Minik8s
 
+### Node 抽象
+
+### Scheduler 调度
+
+调度器监听 Pod 创建事件（Create），之后通过具体的调度策略为 Pod 绑定将要调度到的物理节点 Node，通过 Put 更新 Pod Spec 中的 Node name 字段为所绑定的物理节点名称实现调度。之后对应物理节点上的 Kubelet 会监听到 Pod 修改事件（Modify），发现是新调度至自己节点的 Pod，就会实际创建并运行 Pod。
+
+#### 调度策略
+
+调度器共支持三种调度策略，分别为 `NodeAffinity`，`PodAntiAffinity` 与 `Round Robin`
+
+-  `NodeAffinity`：Pod 可以直接指定希望在哪个 Node 上运行（通过在 yaml 配置文件中指定 Node name）
+-  `PodAntiAffinity`：Pod 可以指定和拥有某种 label 的 Pod 不运行在相同的 Node 上；调度时会尽可能满足 Pod 的 AntiAffinity 需求，当然如果当前所有 Node 都不能满足（比如所有 Node 上都跑了所指定的不能与其一同运行的 Pod），则此配置不生效
+-  `Round Robin`：新来的 Pod 依次轮流调度到各个 Node 上；期间通过 `NodeAffinity` 调度的 Pod 不会影响 RR 队列，通过 `PodAntiAffinity` 调度的 Pod 会将被调度到的节点置于 RR 队列的末尾
+
+**Pod 反亲和性配置案例**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: myapp
+    tier: frontend
+    scheduleAntiAffinity: large
+  name: myapp-schedule-large
+  namespace: default
+spec:
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            scheduleAntiAffinity: tiny
+  containers:
+  - image: nginx
+    imagePullPolicy: Always
+    name: nginx
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    resources: {}
+  restartPolicy: Always
+```
+
+通过其中 `affinity` 字段 `podAntiAffinity` 下的 `requiredDuringSchedulingIgnoredDuringExecution` 配置反亲和性。具体而言，配置中 `labelSelector` 表明不希望调度到有对应 `matchLabels` 标签的 Pod 的 Node 节点。
+
+#### 调度逻辑
+
+1. 在调度时，会首先判断新创建的 Pod 有无指定 `NodeAffinity`（通过 Pod 的 Spec 中 Node name 字段），如果有则直接调度至对应 node，无则判断有无指定 `PodAntiAffinity`
+2. 如果指定了 `PodAntiAffinity`，会尝试采用此策略进行调度；否则直接采用默认的 `Round Robin` 策略调度
+   -  `PodAntiAffinity` 中会通过新创建 Pod 的 label selector 判断各个 Node 上现有的 Pod 的 label 是否与其相符，来决定新 Pod 不能调度到哪些 Node 上；如果所有 Node 都被排除，会无视反亲和性配置，采用  `Round Robin` 进行调度
+   -  如果通过 `PodAntiAffinity` 调度成功，会将 RR 队列中对应的 Node 移到末尾
+3. `Round Robin` 策略通过维护一个 Node 队列实现，每次调度时取队首 Node ，之后将对应 Node 放置队尾，实现 RR 目的
+
+## Pod 抽象及容器生命周期管理
+
+### Pod 间通信
+
+
+
+## Service
+
+
+
+## ReplicaSet：Pod 数量控制
+
+支持 ReplicaSet 抽象。ReplicaSet 对 Pod 指定一定数目的期望数量（`replicas`），并且监控这些 Pod 的状态。当 Pod 异常（发生 crash 或者被 kill 掉）时，会自动根据 Pod Spec 模板启动新 Pod（或接管已有的 `label` 符合对应 `selector` 条件的 Running Pod），使得 ReplicaSet 管理的 Pod 数量（同时 `label` 符合对应 `selector` 条件）恢复到 `replicas` 指定的数目。
+
+该配置可以通过类型为 ReplicaSet 的 yaml 配置文件来指定，示例如下：
+
+```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: myapp
+    tier: frontend
+  name: myapp-replicas
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: myapp
+        tier: frontend
+    spec:
+      containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: nginx
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources: {}
+      restartPolicy: Always
+```
+
+**实现原理**
+
+此功能主要由 ReplicaSet Controller 负责，其维护与 `selector` `matchLabels` 标签匹配的 `replicas` 数量的 Pod，多删少增。
+
+当创建 ReplicaSet 时，如果已经有 Pod，并且其 `label` 匹配 ReplicaSet 的 `selector`，ReplicaSet 会直接接管这些 Pod；此后没有这样满足要求的 Pod 才会根据其中的模板 `template` 字段创建新的 Pod。
+
+对于原本受到 ReplicaSet 管理的 Pod 的 `label` 发生更新时，会重新检查是否符合 ReplicaSet 的 `selector` 匹配，否的话会新接管/创建 Pod。
+
+## Auto scaling：动态伸缩
+
+支持 HPA（`HorizontalPodAutoscaler`）抽象，可以根据其管理的 ReplicaSet 所管理的所有 Pod 中任务的实时负载，对 ReplicaSet `replicas` 数量进行动态扩容和缩容，使 ReplicaSet 所管理的所有 Pod 占用的资源量满足给出的限制。Pod 中任务的实时负载通过每个物理机节点上的 cadvisor 进行实时监控和数据收集（目前支持 cpu 和内存占用指标）。
+
+用户可以在配置文件自定义所要监控的资源指标及相应的扩缩容标准，包括 CPU 使用率和内存使用率。用户也可以在配置文件中自定义扩缩容策略，以限制扩缩容速度和方式。
+
+该配置可以通过类型为 HorizontalPodAutoscaler 的 yaml 配置文件来指定，示例如下：
+
+```yaml
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-practice-cpu-policy-scale-up
+spec:
+  minReplicas: 3
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 20
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 20
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    name: myapp-replicas
+  behavior:
+    scaleUp:
+      selectPolicy: Max
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 15
+```
+
+**主要功能**
+
+- 扩缩容：以扩容为例，HPA 的目标 ReplicaSet 管理的 Pod 负载增加时，如果达到扩容策略 metrics 规定的值，HPA 会增加 Pod 数量（通过修改所管理的 ReplicaSet Spec 的 `replicas` 字段实现），最大会增加到 `maxReplicas`。缩容同理。
+- 与 ReplicaSet 一样，扩缩容所新创建的 Pod 将分布在不同节点中。
+- 扩缩容策略：用户可自定义扩缩容策略，包括对扩缩容的速度限制，时间间隔限制等
+
+**字段意义**
+
+其中各个字段意义如下：
+
+- `minReplicas`：HPA 自动扩缩时最少能缩小到多少 `replicas`
+- `maxReplicas`：HPA 自动扩缩时最多能扩增到多少 `replicas`
+- `metrics`：扩缩容决策所依据的资源指标；定义了在当前资源指标的量化标准下，应该怎么 scale
+  - `type`：资源指标类型，目前仅支持 `Resource`
+  - `resource`：Resource 资源指标信息
+    - `name`：资源名称，目前支持 `cpu` 和 `memory`
+    - `target`：资源的目标值
+      - `type`：目前支持 `AverageValue` 和 `Utilization`
+      - `averageValue`：指标的目标值（对于所有相关 Pod 计算该指标平均值）
+      - `averageUtilization`：指标的目标值，百分比表示（对于所有相关 Pod 计算该指标平均值）
+- `scaleTargetRef`：HPA 控制的对象，当前仅支持 ReplicaSet
+- `behavior`：扩缩容策略，其中 `scaleUp` 与 `scaleDown` 分别配置扩容与缩容策略
+  - `stabilizationWindowSeconds`：从上一次 auto scale 事件开始必须经过 `stabilizationWindowSeconds` 的秒数，才可以进行下一次的自动 scale
+  - `selectPolicy`：对所配置策略组 `Policies` 中各个 policy 结果如何综合（每个 policy 规范 scale 所扩/缩的 Pod 数量应当不大于多少）
+    - `Max`：从 Policies 的所有 Policy 中选出扩/缩的 Pod 数量最多的
+    - `Min`：从 Policies 的所有 Policy 中选出扩/缩的 Pod 数量最少的
+    - `Disabled`：禁止这一维度的 scale（也即不允许自动扩容 `ScaleUp` 或自动缩容 `ScaleDown` ）
+  - `policies`：具体策略（数组，可配置多个）
+    - `type`：
+      - `Pods`：表示 scale 所对 Pod 数量做的变化 delta 需要小于等于 `Value` 的数值（限定变化的绝对数量）
+      - `Percent`：此时 `Value` 对应 0 至 100，表示百分之几；表示 scale 所对 Pod 数量做的变化 delta 需要小于等于当前现有 Pod 数量的百分之多少（如 Value 为 100，则 scale 的增/减数量至多为当前 Pod 数量个 Pod，也即至多倍增/全删）
+    - `PeriodSeconds`：从上一次 auto scale 事件开始必须经过 `PeriodSeconds` 的秒数，此 Policy 才可以生效
+
+**扩缩容默认策略**
+
+如果配置文件中未定义策略，则默认如下：
+
+- 扩容：当资源指标满足需要扩容的条件时，在以下两个原则中取高值扩容，允许至多扩容至 `maxReplicas` 数量
+  - 每 15 秒至多增加 1 个 Pod
+  - 每 60 秒至多倍增 Pod 数量至当前数量的两倍
+  - `stabilizationWindowSeconds` 为 0
+- 缩容：当资源指标满足需要缩容的条件时，允许至多缩小至 `minReplicas` 数量
+  - 每 15 秒至多减少 100 个 Pod
+  - `stabilizationWindowSeconds` 为 300
+
+**实现原理**
+
+- 实际资源使用情况信息的收集与监控：每个物理节点上部署了 cadvisor，用于监控当前节点上实时的 CPU 和内存资源占用信息（包括物理机的总资源信息和每个容器的占用信息）。同时控制面中的 HPAController 会通过 cadvisor client 与其交互，每次需要相应信息时就发起请求，收集最近一段时间内的资源占用 status 情况（包括若干个时间点的采样指标）
+- 使用信息整合：控制面中的 HPAController 下的 Mertic Client 会将这些各容器资源占用信息按照 Pod 进行整合，从而得知 Pod 实际资源使用
+- 扩缩容决策：HPAController 通过 Pod 实际资源使用得到 ReplicaSet 的实际资源使用，并依据对应 HPA 中的资源占用要求进行决策，决定是否扩缩容
+- 扩缩容执行：如果决定扩缩容，则按照相应的扩缩容策略执行，也即通过修改所管理的 ReplicaSet Spec 的 `replicas` 字段实现
+
+## DNS 与转发
+
+## 容错
+
+## GPU应用支持
+
+## Serverless
 
 
 
