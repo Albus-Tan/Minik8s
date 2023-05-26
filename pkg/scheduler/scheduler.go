@@ -431,7 +431,7 @@ func (s *Scheduler) doSchedulePodAntiAffinity(newPod *core.Pod) *core.Node {
 			}
 			if !notSchedule {
 				// check if is master
-				for no.Name == node.NameMaster {
+				if no.Name == node.NameMaster {
 					logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] current node master\n", no.Name)
 					continue
 				}
