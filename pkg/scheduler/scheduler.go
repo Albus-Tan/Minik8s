@@ -397,6 +397,9 @@ func (s *Scheduler) doSchedulePodAntiAffinity(newPod *core.Pod) *core.Node {
 	podList, _ := s.podListWatcher.List()
 	for _, podItem := range podList.GetIApiObjectArr() {
 		pod := podItem.(*core.Pod)
+		if pod.UID == newPod.UID {
+			continue
+		}
 		// check affinity
 		for _, podAffinityTerm := range newPodAnti.RequiredDuringSchedulingIgnoredDuringExecution {
 			if podAffinityTerm.LabelSelector != nil {
@@ -411,12 +414,14 @@ func (s *Scheduler) doSchedulePodAntiAffinity(newPod *core.Pod) *core.Node {
 	}
 
 	if len(nodeNameNotToSchedule) == 0 {
+		logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] no node can not be schedule, use rr\n")
 		return nil
 	} else {
 		allNodes := s.nodesQueue.GetContent()
 		for _, n := range allNodes {
 			no := n.(*core.Node)
 			notSchedule := false
+			logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] checking node %v\n", no.Name)
 			for _, nodeNotSchedule := range nodeNameNotToSchedule {
 				if nodeNotSchedule == no.Name {
 					logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] pod anti-affinity: no schedule to node %v\n", no.Name)
@@ -427,6 +432,7 @@ func (s *Scheduler) doSchedulePodAntiAffinity(newPod *core.Pod) *core.Node {
 			if !notSchedule {
 				// check if is master
 				for no.Name == node.NameMaster {
+					logger.SchedulerLogger.Printf("[Scheduler][doSchedulePodAntiAffinity] current node master\n", no.Name)
 					continue
 				}
 				// do schedule
