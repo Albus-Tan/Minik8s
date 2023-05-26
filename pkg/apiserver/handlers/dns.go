@@ -7,7 +7,6 @@ import (
 	"minik8s/pkg/api/core"
 	"minik8s/pkg/api/types"
 	"minik8s/pkg/apiserver/etcd"
-	"sort"
 	"strings"
 )
 
@@ -57,8 +56,11 @@ func handleAddCoreDnsConfig(dns *core.DNS) {
 
 	// handlePutCoreDnsConfig(key, val string)
 	e := strings.Split(dns.Spec.Hostname, `.`)
-	sort.Sort(sort.Reverse(sort.StringSlice(e)))
-	key := strings.Join(e, `/`)
+	var re []string
+	for _, s := range e {
+		re = append([]string{s}, re...)
+	}
+	key := strings.Join(re, `/`)
 
 	//"host":"${hostname}"
 	val := "{\"host:\": \"" + dns.Spec.ServiceAddress + "\"}"
@@ -73,8 +75,11 @@ func handleDeleteCoreDnsConfig(dns *core.DNS) {
 	// delete config
 
 	e := strings.Split(dns.Spec.Hostname, `.`)
-	sort.Sort(sort.Reverse(sort.StringSlice(e)))
-	key := strings.Join(e, `/`)
+	var re []string
+	for _, s := range e {
+		re = append([]string{s}, re...)
+	}
+	key := strings.Join(re, `/`)
 
 	//"host":"${hostname}"
 	err := etcd.Delete(key)
