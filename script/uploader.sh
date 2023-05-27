@@ -29,10 +29,10 @@ readonly help_usage=\
 readonly help_config_missing=\
 "config file is missing:"
 
-readonly help_var_undefine=\
+readonly help_var_undefined=\
 "var is missing:"
 
-readonly help_version_undefine=\
+readonly help_version_undefined=\
 "VERSION is missing, use default: $DEFAULT_VERSION"
 
 readonly help_file_missing=\
@@ -57,13 +57,13 @@ source $conf
 
 for arg in "${MANDATORY_ARG[@]}" ; do
   if [ ! -v "$arg" ]; then
-    echo "$help_var_undefine $arg"
+    echo "$help_var_undefined $arg"
     exit 255
   fi
 done
 
 if [ ! -v VERSION ]; then
-  echo "$help_version_undefine"
+  echo "$help_version_undefined"
   VERSION=$DEFAULT_VERSION
 fi
 
