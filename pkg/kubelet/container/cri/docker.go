@@ -170,6 +170,7 @@ func buildEnv(cnt core.Container) []string {
 func buildMasterHostConfig(cnt core.Container) *container.HostConfig {
 	return &container.HostConfig{
 		Mounts: buildMount(cnt),
+		DNS:    []string{config.Host},
 	}
 }
 
@@ -207,7 +208,7 @@ func buildSlaverHostConfig(master string, cnt core.Container) *container.HostCon
 		CapAdd:          nil,
 		CapDrop:         nil,
 		CgroupnsMode:    "",
-		DNS:             []string{config.Host},
+		DNS:             nil,
 		DNSOptions:      nil,
 		DNSSearch:       nil,
 		ExtraHosts:      nil,
