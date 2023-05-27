@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 const latestVersion = "v1.0.1"
 
@@ -13,16 +16,19 @@ const HttpScheme = "http://"
 /*--------------- ApiServer ---------------*/
 // Http server gin config
 const (
-	Host = "localhost"
 	Port = ":8080"
 )
 
+func Host() string {
+	return os.Getenv("API_SERVER")
+}
+
 func ApiUrl() string {
-	return HttpScheme + Host + Port + "/api/"
+	return HttpScheme + Host() + Port + "/api/"
 }
 
 func ApiServerUrl() string {
-	return HttpScheme + Host + Port
+	return HttpScheme + Host() + Port
 }
 
 // Etcd storage config
