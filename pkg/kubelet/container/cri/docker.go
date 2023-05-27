@@ -3,14 +3,16 @@ package cri
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
+	"minik8s/config"
+	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
+
 	dt "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"io"
-	"log"
-	"minik8s/pkg/api/core"
-	"minik8s/pkg/api/types"
 )
 
 func NewDocker() (Client, error) {
@@ -168,6 +170,7 @@ func buildEnv(cnt core.Container) []string {
 func buildMasterHostConfig(cnt core.Container) *container.HostConfig {
 	return &container.HostConfig{
 		Mounts: buildMount(cnt),
+		DNS:    []string{config.Host()},
 	}
 }
 
@@ -255,6 +258,18 @@ func (c *dockerClient) handleImagePull(ctx context.Context, cnt core.Container) 
 		fallthrough
 	case core.PullIfNotPresent:
 		//FIXME: check if present
+		images, err := c.Client.ImageList(ctx, dt.ImageListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, i := range images {
+			for _, t := range i.RepoTags {
+				if t == cnt.Image {
+					return nil
+				}
+
+			}
+		}
 		fallthrough
 	case core.PullAlways:
 		out, err := c.Client.ImagePull(ctx, cnt.Image, dt.ImagePullOptions{})

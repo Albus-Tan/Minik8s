@@ -270,7 +270,7 @@ func (k *kubelet) createMasterContainer(ctx context.Context, pod *core.Pod) {
 	container.Name = makePodContainerName(pod, container)
 	_, err := k.criClient.ContainerCreate(ctx, container)
 	if err != nil {
-		log.Fatalf("create failed")
+		log.Fatalf("create failed %v", err)
 	}
 
 	if err := k.criClient.ContainerStart(ctx, container.Name); err != nil {
@@ -288,7 +288,7 @@ func (k *kubelet) createContainers(ctx context.Context, pod *core.Pod, container
 		}
 		id, err := k.criClient.ContainerCreate(ctx, container)
 		if err != nil {
-			log.Fatalf("create failed")
+			log.Fatalf("create failed %v", err)
 		}
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, core.ContainerStatus{
 			Name: name,
@@ -344,7 +344,7 @@ func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
 	ip, err := k.criClient.ContainerIP(ctx, k.criClient.ContainerId(ctx, pod.UID+"-"+"pause"))
 
 	if err != nil {
-		log.Fatalf("get pause ip failed")
+		return err
 	}
 	pod.Status.PodIP = ip
 
@@ -379,7 +379,7 @@ func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
 			}
 			if pod.Spec.RestartPolicy == core.RestartPolicyAlways {
 				if err := k.criClient.ContainerStart(ctx, pod.UID+"-"+c.Name); err != nil {
-					log.Fatalf("run failed %v", err)
+					return err
 				}
 
 			}
@@ -387,6 +387,9 @@ func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
 	}
 
 	oa, err := k.podClient.Get(pod.UID)
+	if err != nil {
+		return err
+	}
 	op := oa.(*core.Pod)
 	if !reflect.DeepEqual(op.Spec, pod.Spec) {
 		return fmt.Errorf("stale")

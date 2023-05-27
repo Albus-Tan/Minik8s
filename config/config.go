@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 const latestVersion = "v1.0.1"
 
@@ -13,16 +16,19 @@ const HttpScheme = "http://"
 /*--------------- ApiServer ---------------*/
 // Http server gin config
 const (
-	Host = "localhost"
 	Port = ":8080"
 )
 
+func Host() string {
+	return os.Getenv("API_SERVER")
+}
+
 func ApiUrl() string {
-	return HttpScheme + Host + Port + "/api/"
+	return HttpScheme + Host() + Port + "/api/"
 }
 
 func ApiServerUrl() string {
-	return HttpScheme + Host + Port
+	return HttpScheme + Host() + Port
 }
 
 // Etcd storage config
@@ -56,6 +62,22 @@ const (
 )
 
 /*--------------- Heartbeat ---------------*/
-const HeartbeatInterval = time.Duration(10) * time.Second
-const HeartbeatDeadInterval = time.Duration(90) * time.Second
-const HeartbeatCheckInterval = time.Duration(15) * time.Second
+const (
+	HeartbeatInterval      = time.Duration(10) * time.Second
+	HeartbeatDeadInterval  = time.Duration(90) * time.Second
+	HeartbeatCheckInterval = time.Duration(15) * time.Second
+)
+
+/*--------------- Serverless ---------------*/
+const (
+	FuncDefaultInitInstanceNum = 0  // Default instance number when func template is created
+	FuncDefaultMaxInstanceNum  = 10 // Default max instance number for each func template
+	FuncDefaultMinInstanceNum  = 0  // Default min instance number for each func template
+)
+
+const (
+	FuncCallColdBootWait           = time.Duration(1000) * time.Millisecond
+	FuncInstanceScaleDownNum       = 1
+	FuncInstanceScaleDownInterval  = time.Duration(60) * time.Second
+	FuncInstanceScaleCheckInterval = time.Duration(10) * time.Second
+)

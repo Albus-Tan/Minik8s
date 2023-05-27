@@ -66,7 +66,7 @@ func (f *Func) GenerateOwnerReference() meta.OwnerReference {
 	return meta.OwnerReference{
 		APIVersion: f.APIVersion,
 		Kind:       f.Kind,
-		Name:       f.Name,
+		Name:       f.Spec.Name,
 		UID:        f.UID,
 		Controller: false,
 	}
@@ -94,15 +94,39 @@ func (f *Func) DeleteOwnerReference(uid types.UID) {
 type FuncSpec struct {
 	// Name is unique for Func, should be same as Name in ObjectMeta field
 	Name string `json:"name"`
+	// ServiceAddress is address where service of this func template is
+	// redirect http request to this address when this func is called
+	ServiceAddress string `json:"serviceAddress"`
 
 	PreRun   string `json:"preRun"`
 	Function string `json:"function"`
 	Left     string `json:"left"`
 	Right    string `json:"right"`
+
+	// InitInstanceNum means how many pod instance will be instantly
+	// created when func template is created
+	InitInstanceNum *int `json:"initInstanceNum,omitempty"`
+	// MaxInstanceNum means how many pod instance will be
+	// created max for this func template
+	MaxInstanceNum *int `json:"maxInstanceNum,omitempty"`
+	// MinInstanceNum means how many pod instance will be
+	// created min for this func template
+	MinInstanceNum *int `json:"minInstanceNum,omitempty"`
 }
 
 type FuncStatus struct {
-	InstanceId string `json:"instanceId,omitempty"`
+	// ServiceUID is the uid of service the function template related
+	// Forward request to pods managed by rs
+	ServiceUID types.UID `json:"serviceId,omitempty"`
+	// ReplicaSetUID is the uid of rs the function template related, which
+	// is responsible for managing all fun server pods life cycle, by changing
+	// spec.replicas in it
+	ReplicaSetUID types.UID `json:"replicaSetId,omitempty"`
+	// Counter is used to count call request number of this func
+	// to decide the pod should have
+	Counter int `json:"counter,omitempty"`
+	// TimeStamp record the time last this func template is called
+	TimeStamp types.Time `json:"timeStamp,omitempty"`
 }
 
 func (f *FuncStatus) JsonUnmarshal(data []byte) error {
@@ -154,7 +178,10 @@ func (f *FuncList) GetItems() any {
 	return f.Items
 }
 
-func (f *FuncList) GetIApiObjectArr() []IApiObject {
-	//TODO implement me
-	panic("implement me")
+func (f *FuncList) GetIApiObjectArr() (res []IApiObject) {
+	for _, item := range f.Items {
+		itemTemp := item
+		res = append(res, &itemTemp)
+	}
+	return res
 }

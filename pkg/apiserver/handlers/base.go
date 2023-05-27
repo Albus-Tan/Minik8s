@@ -45,6 +45,12 @@ func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 	logger.ApiServerLogger.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
 	newObject.SetUID(objectUID)
 
+	// process dns config
+	if ty == types.DnsObjectType {
+		dns := newObject.(*core.DNS)
+		handleAddCoreDnsConfig(dns)
+	}
+
 	// lock for version get, set and store
 	etcd.VLock.Lock()
 	defer etcd.VLock.Unlock()
@@ -146,6 +152,15 @@ func handleDeleteObject(c *gin.Context, ty types.ApiObjectType) {
 	if !has {
 		c.JSON(http.StatusNotFound, gin.H{"status": "ERR", "error": fmt.Sprintf("No such %v", ty)})
 		return
+	}
+
+	// process dns config
+	if ty == types.DnsObjectType {
+		objectStr, _ := etcd.Get(c.Request.URL.Path)
+		newObject := core.CreateApiObject(ty)
+		err = newObject.CreateFromEtcdString(objectStr)
+		dns := newObject.(*core.DNS)
+		handleDeleteCoreDnsConfig(dns)
 	}
 
 	// delete {ApiObject} in etcd
