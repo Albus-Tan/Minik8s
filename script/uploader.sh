@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 readonly DEFAULT_VERSION="v1"
 
-readonly ARGS=(
+readonly MANDATORY_ARG=(
   "API_SERVER"
   "PORT"
   "NAME"
@@ -12,10 +12,18 @@ readonly ARGS=(
   "RIGHT_BRANCH"
 )
 
+readonly OPTIONAL_ARG=(
+  "VERSION"
+)
+
 readonly help_usage=\
 "usage: $0 [CONFIG_FILE]
   CONFIG_FILE: a file contains lines of [NAME]=[VALUE]
-  NAME: should be one of these: ${ARGS[*]} VERSION
+  NAME: should be one of these:
+    mandatory:
+      ${MANDATORY_ARG[*]}
+    optional:
+      ${OPTIONAL_ARG[*]}
   VALUE: string"
 
 readonly help_config_missing=\
@@ -47,7 +55,7 @@ source $conf
 
 
 
-for arg in "${ARGS[@]}" ; do
+for arg in "${MANDATORY_ARG[@]}" ; do
   if [ ! -v "$arg" ]; then
     echo "$help_var_undefine $arg"
     exit 255
