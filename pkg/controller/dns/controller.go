@@ -142,7 +142,7 @@ func (dnsc *dnsController) processDNSCreate(dns *core.DNS) error {
 		Containers: []core.Container{
 			{
 				Name:  "gateway-" + dns.UID,
-				Image: "lwsg/gateway-runner:0.4",
+				Image: "lwsg/gateway-server:latest",
 				Env: []core.EnvVar{
 					{
 						Name:  "_CONF",

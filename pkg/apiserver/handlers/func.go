@@ -350,7 +350,7 @@ func doInsideFuncCallV1(instanceId string, funcTemplate *core.Func, args string)
 		Containers: []core.Container{
 			{
 				Name:  "instance",
-				Image: "lwsg/func-runner:0.10",
+				Image: "lwsg/func-runner:latest",
 				Env: []core.EnvVar{
 					{
 						Name:  "_API_SERVER",
