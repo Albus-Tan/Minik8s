@@ -5,7 +5,7 @@ GOCLEAN = $(GOCMD) clean
 GOINSTALL = $(GOCMD) install
 
 # Directories
-BUILD_DIR = build
+BUILD_DIR = build/
 
 # Build targets
 TARGETS := $(wildcard cmd/*/main.go)
