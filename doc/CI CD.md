@@ -30,9 +30,23 @@ Reference: https://zhuanlan.zhihu.com/p/90612874
 
 - 注意 WebHooks 中需要使用公网 IP，百度中搜索 IP 即可知道本机公网 IP
 
+## 部署 gitlab-runner
+
+```bash
+# Replace ${arch} with any of the supported architectures, e.g. amd64, arm, arm64
+# A full list of architectures can be found here https://gitlab-runner-downloads.s3.amazonaws.com/latest/index.html
+curl -LJO "https://gitlab-runner-downloads.s3.amazonaws.com/latest/rpm/gitlab-runner_${arch}.rpm"
+
+rpm -i gitlab-runner_${arch}.rpm
+sudo gitlab-runner start
+```
+
+
+
 # Ref
 
 1. [安装Jenkins](https://www.jenkins.io/zh/doc/book/installing/)
 2. [学习使用gitee+jenkins实现cicd](https://blog.csdn.net/hyx1229/article/details/127213111)
 3. [Jenkins 插件](https://gitee.com/help/articles/4193)
 4. [Jenkins部署Golang](https://blog.csdn.net/weixin_46837396/article/details/119247154)
+5. [安装Gitlab Runner](https://docs.gitlab.com/runner/install/index.html)
