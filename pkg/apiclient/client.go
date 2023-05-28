@@ -61,11 +61,16 @@ func (c *RESTClient) Post(object core.IApiObject) (int, *api.PostResponse, error
 	}
 
 	resp, err := httpclient.PostBytes(resourceURL, content)
-	defer resp.Body.Close()
 	if err != nil {
 		logger.ApiClientLogger.Println("[RESTClient] http.Post failed", err)
 		return HttpStatusNotSend, nil, err
 	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.ApiClientLogger.Println("[RESTClient] http.Post body close failed", err)
+		}
+	}(resp.Body)
 
 	postResp := &api.PostResponse{}
 	err = postResp.FillResponse(resp)
@@ -239,7 +244,12 @@ func (c *RESTClient) Delete(name string) (int, *api.DeleteResponse, error) {
 		logger.ApiClientLogger.Println("[RESTClient] http.Delete request send failed", err)
 		return HttpStatusNotSend, nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.ApiClientLogger.Println("[RESTClient] http.Delete request body close failed", err)
+		}
+	}(resp.Body)
 
 	delResp := &api.DeleteResponse{}
 	err = delResp.FillResponse(resp)

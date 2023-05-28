@@ -206,8 +206,7 @@ var getCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			fmt.Printf("%-20s\t%-15s\n", "STATUS")
-			fmt.Printf("%-20s\t%-15d\n", status.Phase)
+			fmt.Printf("%-20s\t%-15s\n", "STATUS", status.Phase)
 
 		case "hpas":
 			url := config.ApiUrl() + "hpas/"
@@ -220,9 +219,16 @@ var getCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			fmt.Printf("\n%-20s\t%-40s\t%-15s\t%-15d\t%-15d\n", "NAME", "UID", "MinReplicas", "MaxReplicas", "LastScaleTime")
+			fmt.Printf("\n%-20s\t%-40s\t%-15s\t%-15s\t%-15s\n", "NAME", "UID", "MinReplicas", "MaxReplicas", "LastScaleTime")
 			for _, hpa := range hpas.Hpas {
-				fmt.Printf("%-20s\t%-40s\t%-15s\t%-15d\t%-15d\n", hpa.Metadata.Name, hpa.Metadata.Uid, hpa.Spec.MinReplicas, hpa.Spec.MaxReplicas, hpa.Status.LastScaleTime)
+				fmt.Printf(
+					"%-20s\t%-40s\t%-15d\t%-15d\t%-15s\n",
+					hpa.Metadata.Name,
+					hpa.Metadata.Uid,
+					hpa.Spec.MinReplicas,
+					hpa.Spec.MaxReplicas,
+					hpa.Status.LastScaleTime,
+				)
 			}
 
 		case "hpa":
@@ -242,8 +248,16 @@ var getCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			fmt.Printf("\n%-20s\t%-40s\t%-15s\t%-15d\t%-15d\n", "NAME", "UID", "MinReplicas", "MaxReplicas", "LastScaleTime")
-			fmt.Printf("%-20s\t%-40s\t%-15s\t%-15d\t%-15d\n", hpa.Metadata.Name, hpa.Metadata.Uid, hpa.Spec.MinReplicas, hpa.Spec.MaxReplicas, hpa.Status.LastScaleTime)
+			fmt.Printf("\n%-20s\t%-40s\t%-15s\t%-15s\t%-15s\n",
+				"NAME", "UID", "MinReplicas", "MaxReplicas", "LastScaleTime",
+			)
+			fmt.Printf("%-20s\t%-40s\t%-15d\t%-15d\t%-15s\n",
+				hpa.Metadata.Name,
+				hpa.Metadata.Uid,
+				hpa.Spec.MinReplicas,
+				hpa.Spec.MaxReplicas,
+				hpa.Status.LastScaleTime,
+			)
 
 		case "hpastatus":
 			if len(args) < 2 {
@@ -262,8 +276,7 @@ var getCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			fmt.Printf("%-20s\t%-15s\n", "LastScaleTime")
-			fmt.Printf("%-20s\t%-15d\n", status.LastScaleTime)
+			fmt.Printf("%-20s\t%-15s\n", "LastScaleTime", status.LastScaleTime)
 		default:
 			fmt.Println("get error")
 		}

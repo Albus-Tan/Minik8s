@@ -44,7 +44,6 @@ func DeleteNode(n *core.Node) {
 	_, _, err := nodeCli.Delete(n.UID)
 	if err != nil {
 		panic(err)
-		return
 	}
 }
 
@@ -71,7 +70,6 @@ func (nc *NodeCreator) initNode(configFileName string) bool {
 		nodeList, err := nc.nodeClient.GetAll()
 		if err != nil {
 			panic(err)
-			return false
 		}
 		nodeItems := nodeList.GetIApiObjectArr()
 		for _, nodeItem := range nodeItems {
@@ -122,7 +120,6 @@ func (nc *NodeCreator) registerNode() {
 	_, resp, err := nc.nodeClient.Post(nc.nodeInfo)
 	if err != nil {
 		panic(err)
-		return
 	}
 	nc.nodeInfo.SetUID(resp.UID)
 	nc.nodeInfo.SetResourceVersion(resp.ResourceVersion)
@@ -130,6 +127,5 @@ func (nc *NodeCreator) registerNode() {
 	_, _, err = nc.nodeClient.Put(resp.UID, nc.nodeInfo)
 	if err != nil {
 		panic(err)
-		return
 	}
 }

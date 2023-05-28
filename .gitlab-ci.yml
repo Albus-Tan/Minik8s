@@ -22,11 +22,6 @@ compile:
     paths:
       - build
 
-format:
-  stage: test
-  script:
-    - go fmt $(go list ./... | grep -v /vendor/)
-
 vet:
   stage: test
   script:

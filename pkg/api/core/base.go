@@ -76,7 +76,6 @@ func CreateApiObject(ty types.ApiObjectType) IApiObject {
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
-	return nil
 }
 
 func CreateApiObjectList(ty types.ApiObjectType) IApiObjectList {
@@ -102,7 +101,6 @@ func CreateApiObjectList(ty types.ApiObjectType) IApiObjectList {
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
-	return nil
 }
 
 func CreateApiObjectStatus(ty types.ApiObjectType) IApiObjectStatus {
@@ -128,7 +126,6 @@ func CreateApiObjectStatus(ty types.ApiObjectType) IApiObjectStatus {
 	default:
 		panic(fmt.Sprintf("No ApiObjectType %v", ty))
 	}
-	return nil
 }
 
 func GetApiObjectsURL(ty types.ApiObjectType) string {
