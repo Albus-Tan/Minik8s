@@ -62,7 +62,6 @@ func (s *sender) initHeartbeat() {
 	_, res, err := s.heartbeatClient.Post(s.hb)
 	if err != nil {
 		panic(fmt.Sprintf("[initHeartbeat] node %v init heartbeat failed\n", s.nodeUID))
-		return
 	}
 
 	s.hb.UID = res.UID
