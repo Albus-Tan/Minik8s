@@ -219,7 +219,7 @@ var getCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			fmt.Printf("\n%-20s\t%-40s\t%-15s\t%-15d\t%-15d\n", "NAME", "UID", "MinReplicas", "MaxReplicas", "LastScaleTime")
+			fmt.Printf("\n%-20s\t%-40s\t%-15s\t%-15s\t%-15s\n", "NAME", "UID", "MinReplicas", "MaxReplicas", "LastScaleTime")
 			for _, hpa := range hpas.Hpas {
 				fmt.Printf(
 					"%-20s\t%-40s\t%-15d\t%-15d\t%-15s\n",
@@ -276,8 +276,7 @@ var getCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			fmt.Printf("%-20s\t%-15s\n", "LastScaleTime")
-			fmt.Printf("%-20s\t%-15d\n", status.LastScaleTime)
+			fmt.Printf("%-20s\t%-15s\n", "LastScaleTime", status.LastScaleTime)
 		default:
 			fmt.Println("get error")
 		}
