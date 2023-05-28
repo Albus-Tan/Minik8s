@@ -14,12 +14,6 @@ stages:
   - test
 
 
-set_proxy:
-  stage: build
-  script:
-    - go env -w GO111MODULE=on
-    - go env -w GOPROXY=https://goproxy.cn,direct
-
 compile:
   stage: build
   script:
@@ -32,8 +26,13 @@ format:
   stage: test
   script:
     - go fmt $(go list ./... | grep -v /vendor/)
-uint:
+
+vet:
   stage: test
   script:
     - go vet $(go list ./... | grep -v /vendor/)
+
+unit:
+  stage: test
+  script:
     - go test -race $(go list ./... | grep -v /vendor/)
