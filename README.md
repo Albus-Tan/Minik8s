@@ -201,7 +201,39 @@ type 有下面几类
 
 ### Node 抽象
 
-### Scheduler 调度
+Node 抽象通过 name 进行区分，需要保证不同物理实体机对应的 Node config 文件的 Name 字段在集群中全局唯一。Node 初始化时会检查当前有无 Node 与其重名，如果有，判断 config 文件是否与已有 Node 信息不同：
+
+- 如果一致，则复用当前 Node，不再创建新 Node
+- 如果不一致，报错给用户并退出；用户需要修改 config 文件的 Name 字段，或通过 put 方式修改原有 Node 的配置文件相关内容，以实现配置的修改
+
+Node 抽象可以通过类型为 Node 的 yaml 配置文件来指定，示例如下：
+
+```yaml
+apiVersion: v1
+kind: Node
+metadata:
+  labels:
+    beta.kubernetes.io/arch: amd64
+    beta.kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
+    kubernetes.io/hostname: node1
+    kubernetes.io/os: linux
+  name: node1
+spec:
+  podCIDR: 10.244.1.0/24
+  podCIDRs:
+  - 10.244.1.0/24
+```
+
+#### Heartbeat 心跳机制
+
+通过 worker 节点不断向 master 控制面发送 heartbeat，来告知控制面 worker 节点当前状态。如果一段时间 master 控制面没有接收到某一 worker 节点的心跳，就认为该节点异常，会将其删除。
+
+**实现简述**
+
+所有 worker 节点启动后，会由 Heartbeat Sender 持续向 Master 节点的 Heartbeat Watcher 发送心跳，一旦  Heartbeat Watcher 一段时间没有接收到 worker 节点发来的心跳，就认为对应 worker 节点挂掉，并将其信息在 etcd 内删除。
+
+### Scheduler：Pod 调度
 
 调度器监听 Pod 创建事件（Create），之后通过具体的调度策略为 Pod 绑定将要调度到的物理节点 Node，通过 Put 更新 Pod Spec 中的 Node name 字段为所绑定的物理节点名称实现调度。之后对应物理节点上的 Kubelet 会监听到 Pod 修改事件（Modify），发现是新调度至自己节点的 Pod，就会实际创建并运行 Pod。
 
@@ -300,7 +332,7 @@ spec:
       restartPolicy: Always
 ```
 
-**实现原理**
+**主要功能**
 
 此功能主要由 ReplicaSet Controller 负责，其维护与 `selector` `matchLabels` 标签匹配的 `replicas` 数量的 Pod，多删少增。
 
@@ -407,7 +439,104 @@ spec:
 
 ## 容错
 
-## GPU应用支持
+## GPU 应用支持
+
+支持用户编写 CUDA 程序的 GPU 应用，并帮助用户将 CUDA 程序提交至[交我算平台](https://docs.hpc.sjtu.edu.cn/index.html)编译和运行。
+
+用户只需要编写 CUDA 程序，并通过 yaml 配置文件提交对应 Job，Minik8s 会通过内置的 server 自动生成 slurm 脚本，并将程序上传至交我算平台编译运行。在任务执行完后 Minik8s 会自动下载结果到用户端，同时可配置通过交大邮箱通知用户。
+
+该配置可以通过类型为 Job 的 yaml 配置文件来指定，示例如下：
+
+```yaml
+apiVersion: v1
+kind: Job
+metadata:
+  name: matrix-sum
+  namespace: default
+spec:
+  cuFilePath: D:\SJTU\Minik8s\minik8s\pkg\gpu\cuda\sum_matrix\sum_matrix.cu
+  resultFileName: sum_matrix
+  resultFilePath: D:\SJTU\Minik8s\minik8s\pkg\gpu\cuda\sum_matrix
+  args:
+    numTasksPerNode: 1
+    cpusPerTask: 2
+    mail:
+      type: all
+      userName: albus_tan
+```
+
+**主要功能**
+
+- 用户可以通过编写 Job 类型的 yaml 配置文件提交运行编写的 CUDA 程序
+- 根据 yaml 配置文件自动生成 slurm 脚本，并将用户编写的 CUDA 程序上传至交我算平台编译运行
+- 可配置每节点核数，任务能使用的 CPU，GPU 数量等
+- 提交成功后，可以通过 get job 方法得到当前 Job 的实时执行状态（Pending，Running，Failed，Completed）
+- 支持任务开始时/完成后通过交大邮箱通知用户
+- 任务完成后，自动将结果下载至用户端指定的目录中
+
+**字段意义**
+
+- `cuFilePath`：用户想要提交的 CUDA 程序的路径
+- `resultFileName`：执行结果的文件名
+- `resultFilePath`：执行结果下载至本地的路径
+- `args`：任务可配置参数
+  - `numTasksPerNode`：每节点核数
+  - `cpusPerTask`：使用 CPU 数量
+  - `gpuResources`：使用 GPU 数量
+  - `mail`：任务状态改变时通过交大邮箱通知用户
+    - `type`：支持 begin（任务开始时通知），end（任务结束时通知），fail（任务失败时通知），all（任务状态变化时通知）
+    - `userName`：用户的交大邮箱用户名，如此处填写 `albus_tan`，则会将通知邮件发送至 `albus_tan@sjtu.edu.cn`
+
+**实现原理**
+
+- 任务提交：server 监听 Job 创建事件，之后通过 ssh client，连接登录交我算 π 2.0 集群，使用 CUDA 编译 .cu 文件，并提交 dgx2 队列作业（GPU 任务队列）
+- 任务状态获取：server 后台线程每隔一段时间通过 squeue 命令和 sacct 命令查看作业的状态，并修改对应 Job 的 status 字段
+- 自动结果下载：server 后台线程监听 Job 修改，当发现 Job status 对应字段显示 Job 完成，通过 sftp 从交我算平台下载对应 Job 结果文件夹中的执行结果到本地目标路径
+
+**矩阵乘法和加法程序**
+
+![](README.assets/cuda.png)
+
+`blockIdx` 代表一个 block 的坐标，例如，左上角的块的坐标为 `blockIdx(0,0)`；`blockDim` 代表一个 `block` 的尺寸，一个 `block` 是二维的，`blockDim.x` 代表宽度，`blockDim.y` 代表高度。`threadIdx` 代表一个 block 内线程的坐标，与 `blockIdx` 类似。将 CUDA 网格（grid）中的每个块都对应于矩阵中的一个区域，也即可以将块（block）中的一个单元映射到矩阵中的一个元素：
+
+```c++
+int i = blockIdx.x * blockDim.x + threadIdx.x;
+int j = blockIdx.y * blockDim.y + threadIdx.y;
+```
+
+在 GPU 上执行的函数称为 CUDA 核函数，核函数会被 GPU 上多个线程并行执行，用 `__global__` 声明，在调用时需要用 `<<\>>` 来指定 kernel 要执行的线程数量和维度结构。
+
+矩阵加法 CUDA 核函数：
+
+```c++
+__global__ void matrix_add(int **A, int **B, int **C) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    C[i][j] = A[i][j] + B[i][j];
+}
+```
+
+矩阵乘法 CUDA 核函数：
+
+```c++
+__global__ void matrix_multiply(int **A, int **B, int **C) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    int value = 0;
+    for (int k = 0; k < N; k++) {
+        value += A[i][k] * B[k][j];
+    }
+    C[i][j] = value;
+}
+```
+
+以矩阵乘法为例，调用方法如下（结果为 M*M 的矩阵），每一个线程运算结果矩阵的一个元素：
+
+```c++
+dim3 threadPerBlock(5, 5);
+dim3 numBlocks(M / threadPerBlock.x, M / threadPerBlock.y);
+matrix_multiply <<<numBlocks, threadPerBlock>>> (dev_A, dev_B, dev_C);
+```
 
 ## Serverless
 
@@ -415,7 +544,9 @@ spec:
 
 # 实现简述
 
-实现部分的文档可以参考以下链接
+## 相关实现文档
+
+实现部分的文档可以参考以下链接：
 
 - [API & API 对象](./doc/API.md)
 - [ApiServer, ApiClient 及 ListWatch](./doc/ApiServer.md)
@@ -429,6 +560,62 @@ spec:
 - [CI/CD](./doc/CI CD.md)
 - [CNI](./doc/CNI.md)
 - [Test](./doc/Test.md)
+
+## 实现亮点
+
+### ApiServer
+
+#### Concurrency Control and Consistency 乐观并发控制
+
+API 对象资源更新时支持 ResourceVersion 检查，避免了多个组件/用户同时更新同一个对象资源时可能的并发问题，如两个组件同时基于同一版本的对象更新了某对象的 A 与 B 字段，之后 Put 时后更新的就会将先更新的字段覆盖，从而导致部分字段的更新遗漏。
+
+> Ref：https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+
+参照 Kubernetes 的实现，所有资源都有一个 `resourceVersion` 字段，作为其元数据的一部分。这个 ResourceVersion 是一个字符串，它标识了一个对象的内部版本，可以被客户端用来确定对象何时改变。当一条记录要被更新时，它的版本会与一个预先保存的值进行核对，如果不匹配，更新就会以 StatusConflict（HTTP状态码409）失败。
+
+资源版本目前是由 [etcd 的 mod_revision](https://etcd.io/docs/latest/learning/api/#key-value-pair) 支持的。然而，需要注意的是，应用程序不应该依赖所维护的版本系统的实现细节。我们可能会在未来改变资源版本的实现，比如把它改成一个时间戳或每个对象的计数器。
+
+由于 mod revision 在对 etcd 的 Put 操作后才能获取到，同时需要将这个 revision 写入 API 对象自身的 ResourceVersion 字段，实现时需要注意同步维护全局 revision 号（通过 `ResourceVersionManager` 维护），并且保证获取下一次 mod revision，写入 API 对象自身的 ResourceVersion 字段，存储 API 对象这一系列 Get version，Set version，Store Object 操作同一时刻只能有一个在发生。实现时添加锁 `VLock` 来保障这一点。
+
+### ListWatch
+
+通过 `client.Interface` 创建，封装接口为 `ListWatcher`，专门用来调用对应资源的 `GetAll` 与 `WatchAll` 方法。
+
+#### Watch 监听机制
+
+可以对某个/种 API 对象进行监听，当其发生创建，修改或者删除时，获得通知。
+
+- 在 watch 请求后建立 http 长连接，通过 `http.Flusher` 将 event 实时刷新给请求者，而不用断开重连。
+- 内部通过 `etcd` 的 `Watch` 机制实现。对某个 `key` 进行监听，每当对应 `value` 发生修改，就会通过 channel 进行通知。 `etcd` 的 `Watch` 在键值对被删除时响应 value 为 `“”`，考虑到许多组件需要获取被删除前的内容，因此使用 `clientv3.WithPrevKV()` 添加这个字段。
+
+#### StreamWatcher
+
+`ListWatcher` 接口的实现，需要对资源进行 List 和 Watch 操作的组件可以通过 `ListWatcher` 轻松的实现监听：
+
+- `Decoder`：负责将 `Watch` 监听到的 `ApiServer` 发来的事件类型转换为 `watch.Event` 类型
+  - 此处 `ApiServer` 发来的事件类型为 `Etcd` 内置事件类型，这么做的好处在于解耦，修改实现只需要实现对应 `Decoder interface` 接口即可
+- `Reporter`：错误处理，将报告错误的事件转换为标准的 `watch.Event` 类型，同时也将过程中产生的错误 转换为标准的 `watch.Event` 类型
+- `chan Event`：通过此通道将监听到的事件发送出去，使用 `StreamWatcher` 的组件可以通过 `watch.Interface` 中的 `ResultChan()` 拿到这个通道，并获取事件；通道使用完成后/结束时需要通过 `Stop()` 方法关闭通道
+
+### Controller
+
+参照 Kubernetes，实现了 Informer 和 WorkQueue 两个基本组件，方便所有 Controller 的实现。
+
+#### Informer 本地缓存
+
+相当于每个 Node 上对于不同 ApiObject 的本地缓存，避免频繁向 ApiServer 发送网络请求，可以很大程度上提升性能。每一种 ApiObject 资源对应一个 Informer（由 `objType` 指定）。启动时其中的 `Reflector` 通过 `List` 向 ApiServer 拿取所有 ApiObject 信息，并且存储在 `ThreadSafeStore` 中。之后其 `Reflector` 通过 `Watch` 监听所有对应 ApiObject 的变化事件，并存储在 `ThreadSafeStore` 中，同时调用注册进来的 `ResourceEventHandler` 进行相应处理。
+
+- `Reflector`：启动时先通过 `List` 向 ApiServer 拿取所有 ApiObject 信息，并且存储在 `ThreadSafeStore` 中，之后通过 `Watch` 监听所有对应 ApiObject 的变化事件，并通知  `Informer` （通过将事件放入 `WorkQueue`）；其中 `List` 与 `Watch` 都由 `listwatch.ListerWatcher` 组件完成
+- `ThreadSafeStore`：与其 `Reflector` 共享同一个存储，存储对应 ApiObject 对象的本地缓存
+- `ResourceEventHandler`：注册对于各种 `Watch` 事件的响应，使用 `Informer` 的组件可以通过 `AddEventHandler ` 添加对应处理函数
+- `WorkQueue`：每次 `Reflector` 监听到新事件，就放进此队列，等待 `Informer` 在 `run` 中进行处理，并调用相应注册进来的 `EventHandler` 函数
+
+#### WorkQueue 工作队列
+
+工作队列可以允许 controller 中多个 worker 同时消费对象相关事件，实现处理并行化，提升性能。
+
+- 线程安全的队列，通过读写锁允许多个线程同时处理而不出现并发问题
+- 在 `Dequeue` 时如果队列为空，会通过 Conditional Variable 等待 `Enqueue` 操作唤醒，再尝试进行 `Dequeue`
 
 # 组员分工和贡献度
 
