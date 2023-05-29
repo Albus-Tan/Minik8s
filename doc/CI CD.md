@@ -1,6 +1,8 @@
 # CI/CD
 
-## docker部署jenkins
+## jenkins
+
+### docker部署jenkins
 
 ```bash
 docker pull jenkins/jenkins:lts-jdk11
@@ -9,7 +11,7 @@ docker run --name c-jenkins -p 8008:8080 -p 50000:50000 --restart=always -u root
 
 浏览器访问 http://localhost:8008/
 
-## 初始化jenkins
+### 初始化jenkins
 
 浏览器访问jenkins后，需要输入初始密码，获取密码如下：
 
@@ -22,7 +24,7 @@ cat /var/jenkins_home/secrets/initialAdminPassword
 # 新建用户，也可以不新建，使用admin账户
 ```
 
-## jenkins+Gitee 自动化构建
+### jenkins+Gitee 自动化构建
 
 具体流程见 Ref
 
