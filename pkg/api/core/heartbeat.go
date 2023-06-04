@@ -14,6 +14,11 @@ type Heartbeat struct {
 	Status          HeartbeatStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+func (j *Heartbeat) PrintBrief() {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (j *Heartbeat) SetUID(uid types.UID) {
 	j.ObjectMeta.UID = uid
 }
@@ -112,6 +117,11 @@ type HeartbeatList struct {
 	meta.TypeMeta `json:",inline"`
 	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Items         []Heartbeat `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (j *HeartbeatList) PrintBrief() {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (j *HeartbeatList) JsonUnmarshal(data []byte) error {

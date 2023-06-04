@@ -57,14 +57,15 @@ func handleAddCoreDnsConfig(dns *core.DNS) {
 
 	// handlePutCoreDnsConfig(key, val string)
 	e := strings.Split(dns.Spec.Hostname, `.`)
-	re := []string{"/coredns"}
+	var re []string
 	for _, s := range e {
 		re = append([]string{s}, re...)
 	}
+	re = append([]string{"/coredns"}, re...)
 	key := strings.Join(re, `/`)
 
 	//"host":"${hostname}"
-	val := "{\"host:\": \"" + dns.Spec.ServiceAddress + "\"}"
+	val := "{\"host\": \"" + dns.Spec.ServiceAddress + "\"}"
 	err, _ := etcd.Put(key, val)
 	if err != nil {
 		log.Println(err.Error())
@@ -76,10 +77,11 @@ func handleDeleteCoreDnsConfig(dns *core.DNS) {
 	// delete config
 
 	e := strings.Split(dns.Spec.Hostname, `.`)
-	re := []string{"/coredns"}
+	var re []string
 	for _, s := range e {
 		re = append([]string{s}, re...)
 	}
+	re = append([]string{"/coredns"}, re...)
 	key := strings.Join(re, `/`)
 
 	//"host":"${hostname}"

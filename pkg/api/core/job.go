@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -12,6 +13,11 @@ type Job struct {
 	meta.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Spec            JobSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 	Status          JobStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (j *Job) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", "NAME", "UID", "JOBID", "STATE")
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", j.Name, j.UID, j.Status.JobID, j.Status.State)
 }
 
 func (j *Job) SetUID(uid types.UID) {
@@ -154,6 +160,13 @@ type JobList struct {
 	meta.TypeMeta `json:",inline"`
 	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Items         []Job `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (j *JobList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", "NAME", "UID", "JOBID", "STATE")
+	for _, item := range j.Items {
+		fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", item.Name, item.UID, item.Status.JobID, item.Status.State)
+	}
 }
 
 func (j *JobList) JsonUnmarshal(data []byte) error {

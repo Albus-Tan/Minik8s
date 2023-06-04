@@ -35,6 +35,8 @@ type IApiObject interface {
 	// DeleteOwnerReference delete OwnerReference of uid from
 	// meta.ObjectMeta OwnerReference[] field of ApiObject
 	DeleteOwnerReference(uid types.UID)
+
+	PrintBrief()
 }
 
 type IApiObjectList interface {
@@ -44,6 +46,7 @@ type IApiObjectList interface {
 	AppendItemsFromStr(objectStrs []string) error
 	GetItems() any
 	GetIApiObjectArr() []IApiObject
+	PrintBrief()
 }
 
 type IApiObjectStatus interface {

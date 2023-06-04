@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"minik8s/config"
 	"minik8s/pkg/kubelet"
 	"minik8s/pkg/node"
 	"minik8s/pkg/node/heartbeat"
@@ -13,7 +12,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := node.CreateWorkerNode(config.Worker1NodeConfigFileName)
+	n := node.CreateWorkerNode()
 	defer node.DeleteNode(n)
 
 	heartbeatSender := heartbeat.NewSender(n.UID)

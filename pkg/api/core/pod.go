@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -28,6 +29,11 @@ type Pod struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status PodStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (p *Pod) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\t%-15s\n", "NAME", "UID", "NODE", "STATUS", "IP")
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\t%-15s\n", p.Name, p.UID, p.Spec.NodeName, p.Status.Phase, p.Status.PodIP)
 }
 
 func (p *Pod) DeleteOwnerReference(uid types.UID) {
@@ -214,6 +220,15 @@ type PodStatus struct {
 	ContainerStatuses []ContainerStatus `json:"containerStatuses,omitempty" protobuf:"bytes,8,rep,name=containerStatuses"`
 }
 
+func DefaultPosStatus() PodStatus {
+	return PodStatus{
+		Phase:             PodPending,
+		HostIP:            "unknown",
+		PodIP:             "unknown",
+		ContainerStatuses: nil,
+	}
+}
+
 func (p *PodStatus) JsonUnmarshal(data []byte) error {
 	return json.Unmarshal(data, &p)
 }
@@ -271,6 +286,13 @@ type PodList struct {
 	// List of pods.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
 	Items []Pod `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (p *PodList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\t%-15s\n", "NAME", "UID", "NODE", "STATUS", "IP")
+	for _, item := range p.Items {
+		fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\t%-15s\n", item.Name, item.UID, item.Spec.NodeName, item.Status.Phase, item.Status.PodIP)
+	}
 }
 
 func (p *PodList) AppendItemsFromStr(objectStrs []string) error {

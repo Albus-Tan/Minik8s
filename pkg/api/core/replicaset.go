@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -30,6 +31,11 @@ type ReplicaSet struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status ReplicaSetStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (r *ReplicaSet) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", "NAME", "UID", "DESIRED", "CURRENT")
+	fmt.Printf("%-20s\t%-40s\t%-15d\t%-15d\n", r.Name, r.UID, r.Spec.Replicas, r.Status.Replicas)
 }
 
 func (r *ReplicaSet) DeleteOwnerReference(uid types.UID) {
@@ -217,6 +223,13 @@ type ReplicaSetList struct {
 	// List of pods.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
 	Items []ReplicaSet `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (r *ReplicaSetList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", "NAME", "UID", "DESIRED", "CURRENT")
+	for _, item := range r.Items {
+		fmt.Printf("%-20s\t%-40s\t%-15d\t%-15d\n", item.Name, item.UID, item.Spec.Replicas, item.Status.Replicas)
+	}
 }
 
 func (r *ReplicaSetList) JsonUnmarshal(data []byte) error {

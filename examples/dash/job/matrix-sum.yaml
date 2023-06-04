@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: Job
+metadata:
+  name: matrix-sum
+  namespace: default
+spec:
+  cuFilePath: /root/minik8s/pkg/gpu/cuda/sum_matrix/sum_matrix.cu
+  resultFileName: sum_matrix
+  resultFilePath: /root/minik8s/pkg/gpu/cuda/sum_matrix
+  args:
+    numTasksPerNode: 1
+    cpusPerTask: 2
+    mail:
+      type: all
+      userName: lwsg0000

@@ -98,5 +98,5 @@ data=\
   }
 }"
 
-curl -X POST "$API_SERVER:8080/api/funcs/template/" --data "$data"
+curl -X POST "$API_SERVER:$PORT/api/funcs/template/" --data "$data"
 echo

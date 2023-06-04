@@ -8,6 +8,7 @@ import (
 	"minik8s/pkg/apiclient/listwatch"
 	"minik8s/pkg/controller/cache"
 	"minik8s/pkg/controller/dns"
+	"minik8s/pkg/controller/pod"
 	"minik8s/pkg/controller/podautoscaler"
 	"minik8s/pkg/controller/replicaset"
 	"minik8s/pkg/controller/serverless"
@@ -47,6 +48,7 @@ func NewControllerManager() Manager {
 		horizontalController: podautoscaler.NewHorizontalController(podInformer, podClient, hpaInformer, hpaClient, rsInformer, rsClient),
 		dnsController:        dns.NewDnsController(podClient, serviceClient, dnsInformer, dnsClient),
 		serverlessController: serverless.NewServerlessController(funcTemplateInformer, funcTemplateClient, rsClient, serviceClient, podClient),
+		podController:        pod.NewPodController(podClient, podInformer),
 	}
 }
 
@@ -69,6 +71,7 @@ type manager struct {
 	horizontalController podautoscaler.HorizontalController
 	dnsController        dns.DnsController
 	serverlessController serverless.ServerlessController
+	podController        pod.PodController
 }
 
 func NewDefaultClientSet(objType types.ApiObjectType) (client.Interface, cache.Informer) {
@@ -98,4 +101,5 @@ func (m *manager) Run(ctx context.Context, cancel context.CancelFunc) {
 	m.horizontalController.Run(ctx)
 	m.dnsController.Run(ctx)
 	m.serverlessController.Run(ctx)
+	m.podController.Run(ctx)
 }

@@ -206,6 +206,13 @@ func (k *kubeProxy) handleSvcCreat(s *core.Service) {
 	k.Lock()
 	defer k.Unlock()
 	k.Manager.CreatSvc(s)
+	ol, err := k.podClient.GetAll()
+	if err != nil {
+		return
+	}
+	for _, o := range ol.GetIApiObjectArr() {
+		k.Manager.HandlePodModify(o.(*core.Pod))
+	}
 }
 
 func (k *kubeProxy) handleSvcDel(s *core.Service) {

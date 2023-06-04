@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: myapp
+    tier: frontend
+    scheduleAntiAffinity: ice
+  name: myapp-schedule-ice
+  namespace: default
+spec:
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              scheduleAntiAffinity: flame
+  containers:
+    - image: nginx
+      imagePullPolicy: Always
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources: { }
+  restartPolicy: Always

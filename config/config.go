@@ -76,7 +76,7 @@ const (
 )
 
 const (
-	FuncCallColdBootWait           = time.Duration(1000) * time.Millisecond
+	FuncCallColdBootWait           = time.Duration(200) * time.Millisecond
 	FuncInstanceScaleDownNum       = 1
 	FuncInstanceScaleDownInterval  = time.Duration(60) * time.Second
 	FuncInstanceScaleCheckInterval = time.Duration(10) * time.Second

@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dns-network-test-2
+  namespace: default
+  labels:
+    app: new-world
+spec:
+  containers:
+    - image: lwsg/notice-server
+      imagePullPolicy: PullIfNotPresent
+      name: notice-server
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      env:
+        - name: _NOTICE
+          value: |
+             new world
+  restartPolicy: Always

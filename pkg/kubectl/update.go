@@ -1,123 +1,59 @@
 package kubectl
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/spf13/cobra"
-	"io"
-	"minik8s/config"
-	"net/http"
+	"minik8s/pkg/api/core"
+	"minik8s/pkg/api/types"
+	"minik8s/pkg/apiclient"
+	"minik8s/utils"
 )
 
 var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "update pods or namespaces.",
-	Args:  cobra.MinimumNArgs(1),
+	Use:   "update <resource> (<resource-name>) -f <filename>",
+	Short: "update resources",
+	Args:  cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		s := args[0]
-		switch s {
-		case "pod":
-			if len(args) < 2 {
-				fmt.Println("please input the pod name")
-				return
-			}
-			podname := args[1]
-			url := config.ApiUrl() + "pods/"
-			url = url + podname
-			filename := GetFilename()
-			jsonData, err := GetFormJsonData(filename)
-			if err != nil {
-				fmt.Println("获取格式化文件错误:", err)
-				return
-			}
-			req, err := http.NewRequest("PUT", url, bytes.NewReader(jsonData))
-			if err != nil {
-				fmt.Println("创建HTTP请求错误:", err)
-				return
-			}
-			req.Header.Set("Content-Type", "application/json")
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Println("发送HTTP请求错误:", err)
-				return
-			}
-			defer resp.Body.Close()
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				fmt.Println("读取HTTP响应错误:", err)
-				return
-			}
-			fmt.Printf("HTTP响应: %s\n", body)
-		case "replicaset":
-			if len(args) < 2 {
-				fmt.Println("please input the replicaset name")
-				return
-			}
-			replicasetname := args[1]
-			url := config.ApiUrl() + "replicasets/"
-			url = url + replicasetname
-			filename := GetFilename()
-			jsonData, err := GetFormJsonData(filename)
-			if err != nil {
-				fmt.Println("获取格式化文件错误:", err)
-				return
-			}
-			req, err := http.NewRequest("PUT", url, bytes.NewReader(jsonData))
-			if err != nil {
-				fmt.Println("创建HTTP请求错误:", err)
-				return
-			}
-			req.Header.Set("Content-Type", "application/json")
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Println("发送HTTP请求错误:", err)
-				return
-			}
-			defer resp.Body.Close()
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				fmt.Println("读取HTTP响应错误:", err)
-				return
-			}
-			fmt.Printf("HTTP响应: %s\n", body)
-		case "hpa":
-			if len(args) < 2 {
-				fmt.Println("please input the hpa name")
-				return
-			}
-			hpaname := args[1]
-			url := config.ApiUrl() + "hpa/"
-			url = url + hpaname
-			filename := GetFilename()
-			jsonData, err := GetFormJsonData(filename)
-			if err != nil {
-				fmt.Println("获取格式化文件错误:", err)
-				return
-			}
-			req, err := http.NewRequest("PUT", url, bytes.NewReader(jsonData))
-			if err != nil {
-				fmt.Println("创建HTTP请求错误:", err)
-				return
-			}
-			req.Header.Set("Content-Type", "application/json")
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Println("发送HTTP请求错误:", err)
-				return
-			}
-			defer resp.Body.Close()
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				fmt.Println("读取HTTP响应错误:", err)
-				return
-			}
-			fmt.Printf("HTTP响应: %s\n", body)
-		default:
-			fmt.Println("please input the right command")
+
+		objType, err := ParseType(s)
+		if err != nil {
+			fmt.Printf("No %v type of resource, err: %v\n", s, err)
+			return
 		}
+
+		filename := GetFilename()
+		jsonData, err := utils.GetFormJsonData(filename)
+		if err != nil {
+			fmt.Println("File parse err:", err)
+			return
+		}
+
+		cli, _ := apiclient.NewRESTClient(objType)
+		object := core.CreateApiObject(objType)
+		err = object.JsonUnmarshal(jsonData)
+
+		var name string
+		if len(args) >= 2 {
+			name = args[1]
+		} else {
+			if objType == types.FuncTemplateObjectType {
+				name = object.(*core.Func).Name
+			} else {
+				name = object.GetUID()
+			}
+		}
+
+		code, resp, err := cli.Put(name, object)
+		if err != nil {
+			fmt.Printf("%v put failed, http status code %v, err: %v, %v\n", objType, code, resp.ErrorMsg, err)
+			return
+		}
+
+		fmt.Printf("%v put success, resource version: %v\n", objType, resp.ResourceVersion)
+
+		return
+
 	},
 }
 

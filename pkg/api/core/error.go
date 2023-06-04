@@ -11,6 +11,11 @@ type ErrorApiObject struct {
 	msg string
 }
 
+func (e *ErrorApiObject) PrintBrief() {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (e *ErrorApiObject) DeleteOwnerReference(uid types.UID) {
 	panic("ErrorApiObject: this method should not be called!")
 }

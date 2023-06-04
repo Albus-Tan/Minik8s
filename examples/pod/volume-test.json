@@ -1,0 +1,45 @@
+{
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "labels": {
+      "app": "myapp",
+      "tier": "frontend"
+    },
+    "name": "myapp-not-replica-created",
+    "namespace": "default"
+  },
+  "spec": {
+    "containers": [
+      {
+        "image": "lwsg/debug-server",
+        "imagePullPolicy": "PullIfNotPresent",
+        "name": "debug-server-write",
+        "volumeMounts": [
+          {
+            "name": "share",
+            "mountPath": "/share"
+          }
+        ],
+        "command": [
+          "sleep"
+        ],
+        "args": [
+          "1d"
+        ]
+      },
+      {
+        "image": "lwsg/debug-server",
+        "imagePullPolicy": "PullIfNotPresent",
+        "name": "debug-server-read",
+        "volumeMounts": [
+          {
+            "name": "share",
+            "mountPath": "/share"
+          }
+        ]
+      }
+    ],
+    "restartPolicy": "Always"
+  }
+}

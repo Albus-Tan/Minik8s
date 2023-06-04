@@ -1,0 +1,26 @@
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "labels": {
+      "app": "myapp",
+      "tier": "frontend"
+    },
+    "name": "myapp-not-replica-createdb",
+    "namespace": "default"
+  },
+  "spec": {
+    "ports": [
+      {
+        "name": "hello",
+        "port": 80,
+        "targetPort": 80
+      }
+    ],
+    "selector": {
+      "app": "myapp"
+    },
+    "clusterIP": "10.6.0.1",
+    "type": "ClusterIP"
+  }
+}

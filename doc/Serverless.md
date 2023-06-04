@@ -148,5 +148,5 @@ type FuncStatus struct {
     - pod 中会在名为 name 函数逻辑结束后，调用下一个函数（同样是 `PUT /api/funcs/:name/:id` 接口，name 字段设置为下一个将被调用的函数名即可），并将用户调用的实例 id 即 `instanceId` 递归传递
     - pod 个数由所属 func template 中的 replica set 管理
       - 每当出现新的对函数的调用请求，更新对应 func template 中 status 里的 timestamp 时间戳，同时增加 counter
-      - 每隔一定时间，将所有现存的 func template 中的 counter 统一减少一定数值，同时 replicaset 中的 replica num 保持与 counter 一致，从而实现函数不被调用时 scale to sero
+      - 每隔一定时间，将所有现存的 func template 中的 counter 统一减少一定数值，同时 replicaset 中的 replica num 保持与 counter 一致，从而实现函数不被调用时 scale to 中 zero
       - 设置策略限定 counter 上界，同时优化 counter 不同时的扩缩策略，实现更佳效果

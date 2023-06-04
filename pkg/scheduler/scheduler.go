@@ -284,12 +284,16 @@ loop:
 			switch event.Type {
 			case watch.Added:
 				newNode := (event.Object).(*core.Node)
-				s.nodesQueue.Enqueue(newNode)
+				if newNode.Status.Phase == core.NodeRunning {
+					s.nodesQueue.Enqueue(newNode)
+				}
 			case watch.Modified:
 				newNode := (event.Object).(*core.Node)
-				nodeUID := newNode.GetUID()
-				s.deleteNodeInQueue(nodeUID)
-				s.nodesQueue.Enqueue(newNode)
+				if newNode.Status.Phase == core.NodeRunning {
+					nodeUID := newNode.GetUID()
+					s.deleteNodeInQueue(nodeUID)
+					s.nodesQueue.Enqueue(newNode)
+				}
 			case watch.Deleted:
 				oldNode := (event.Object).(*core.Node)
 				nodeUID := oldNode.GetUID()

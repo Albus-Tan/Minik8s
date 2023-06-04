@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -12,6 +13,11 @@ type Func struct {
 	meta.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Spec            FuncSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 	Status          FuncStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (f *Func) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", "FUNC_NAME", "ADDRESS", "INSTANCE_NUM", "LAST_CALL_TIME")
+	fmt.Printf("%-20s\t%-40s\t%-8d\t%-15s\n", f.Spec.Name, f.Spec.ServiceAddress, f.Status.Counter, f.Status.TimeStamp.String())
 }
 
 func (f *Func) SetUID(uid types.UID) {
@@ -141,6 +147,13 @@ type FuncList struct {
 	meta.TypeMeta `json:",inline"`
 	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Items         []Func `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (f *FuncList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", "FUNC_NAME", "ADDRESS", "INSTANCE_NUM", "LAST_CALL_TIME")
+	for _, item := range f.Items {
+		fmt.Printf("%-20s\t%-40s\t%-8d\t%-15s\n", item.Spec.Name, item.Spec.ServiceAddress, item.Status.Counter, item.Status.TimeStamp.String())
+	}
 }
 
 func (f *FuncList) JsonUnmarshal(data []byte) error {

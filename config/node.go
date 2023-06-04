@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"minik8s/pkg/api/core"
+	"minik8s/utils"
 	"os"
-	"path/filepath"
 )
 
 /*--------------- Node Basic ---------------*/
@@ -19,19 +19,14 @@ const (
 
 // Name of node in ConfigFile must be unique
 // and name of master node must be "master"
-const (
-	RelativePath              = "config"
-	MasterNodeConfigFileName  = "master.json"
-	Worker1NodeConfigFileName = "worker1.json"
-	Worker2NodeConfigFileName = "worker2.json"
-)
+func NodeConfig() string {
+	return os.Getenv("NODE_CONFIG")
+}
 
-func LoadNodeFromTemplate(configFileName string) *core.Node {
-	path, _ := os.Getwd()
-	path = filepath.Join(path, RelativePath)
-	path = filepath.Join(path, configFileName)
+func LoadNodeFromTemplate() *core.Node {
+	path := NodeConfig()
 
-	file, err := os.ReadFile(path)
+	file, err := utils.GetFormJsonData(path)
 	if err != nil {
 		fmt.Printf("Error reading file %s, err %v\n", path, err)
 		return nil

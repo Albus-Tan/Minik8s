@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: DNS
+name: dns-test
+spec:
+  serviceAddress: 10.8.0.1
+  hostname: hello.world.minik8s
+  mappings:
+    - address: http://10.6.1.1:80
+      path: "/world"
+    - address: http://10.6.1.2:80
+      path: "/new/world"

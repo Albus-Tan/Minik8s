@@ -23,6 +23,7 @@ func TestClient(t *testing.T) {
 	log.Printf("[Test cadvisor] MachineInfo: %#v\n", info)
 
 	query := v1.DefaultContainerInfoRequest()
+
 	containerInfos, err := cadvisorClient.AllDockerContainers(&query)
 	if err != nil {
 		log.Printf("[Test cadvisor] AllDockerContainers error: %#v\n", err)

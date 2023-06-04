@@ -45,10 +45,20 @@ func handlePostObject(c *gin.Context, ty types.ApiObjectType) {
 	logger.ApiServerLogger.Printf("[apiserver] generate new %v UID: %v", ty, objectUID)
 	newObject.SetUID(objectUID)
 
+	// modify object status
+	if ty == types.NodeObjectType {
+		no := newObject.(*core.Node)
+		no.Status.Phase = core.NodePending
+	}
+
 	// process dns config
 	if ty == types.DnsObjectType {
 		dns := newObject.(*core.DNS)
 		handleAddCoreDnsConfig(dns)
+	}
+	if ty == types.PodObjectType {
+		pod := newObject.(*core.Pod)
+		pod.Status = core.DefaultPosStatus()
 	}
 
 	// lock for version get, set and store

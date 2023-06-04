@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Node
+metadata:
+  labels:
+    beta.kubernetes.io/arch: amd64
+    beta.kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
+    kubernetes.io/hostname: worker3
+    kubernetes.io/os: linux
+    node-role.kubernetes.io/control-plane: ''
+    node.kubernetes.io/exclude-from-external-load-balancers: ''
+  name: worker3
+spec:
+  address: "127.0.0.1"

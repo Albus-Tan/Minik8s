@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: myapp
+    tier: frontend
+  name: succeed-failure
+  namespace: default
+spec:
+  containers:
+    - image: "ubuntu:bionic"
+      imagePullPolicy: PullIfNotPresent
+      name: timer
+      command:
+        - sleep
+      args:
+        - 30s
+      resources:
+        limits:
+          cpu: 100m
+          memory: 200M
+  
+  restartPolicy: RestartOnFailure
+
+# 2.a 配置容器镜像所执行的命令, 限制容器资源

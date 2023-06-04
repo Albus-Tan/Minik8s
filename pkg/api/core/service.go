@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -28,6 +29,11 @@ type Service struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status ServiceStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (s *Service) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", "NAME", "UID", "TYPE", "IP")
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", s.Name, s.UID, s.Spec.Type, s.Spec.ClusterIP)
 }
 
 func (s *Service) DeleteOwnerReference(uid types.UID) {
@@ -255,6 +261,13 @@ type ServiceList struct {
 
 	// List of services
 	Items []Service `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (s *ServiceList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", "NAME", "UID", "TYPE", "IP")
+	for _, item := range s.Items {
+		fmt.Printf("%-20s\t%-40s\t%-8s\t%-15s\n", item.Name, item.UID, item.Spec.Type, item.Spec.ClusterIP)
+	}
 }
 
 func (s *ServiceList) GetIApiObjectArr() (res []IApiObject) {

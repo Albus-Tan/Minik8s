@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -27,6 +28,11 @@ type Node struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	// +optional
 	Status NodeStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (n *Node) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", "NAME", "UID", "STATUS", "IP")
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", n.Name, n.UID, n.Status.Phase, n.Spec.Address)
 }
 
 func (n *Node) DeleteOwnerReference(uid types.UID) {
@@ -230,6 +236,13 @@ type NodeList struct {
 
 	// List of nodes
 	Items []Node `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (n *NodeList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", "NAME", "UID", "STATUS", "IP")
+	for _, item := range n.Items {
+		fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", item.Name, item.UID, item.Status.Phase, item.Spec.Address)
+	}
 }
 
 func (n *NodeList) GetIApiObjectArr() (res []IApiObject) {

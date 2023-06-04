@@ -134,8 +134,9 @@ func AverageStatsMetrics(stats []*info.ContainerStats) *PodMetric {
 	} else {
 		return &PodMetric{
 			Timestamp: stats[0].Timestamp,
-			CpuUsage:  cpuUsg / cnt,
-			MemUsage:  memUsg / cnt,
+			CpuUsage: (stats[len(stats)-1].Cpu.Usage.Total - stats[0].Cpu.Usage.Total) * 1_000 /
+				uint64(time.Since(stats[0].Timestamp).Nanoseconds()-time.Since(stats[len(stats)-1].Timestamp).Nanoseconds()),
+			MemUsage: memUsg / cnt,
 		}
 	}
 
@@ -173,6 +174,7 @@ func (r *resourceMetricsClient) CollectAllMetrics() (res map[string]info.Contain
 
 	r.syncNodeInfo()
 	query := info.DefaultContainerInfoRequest()
+	query.NumStats = 10
 	res = make(map[string]info.ContainerInfo)
 
 	r.mtx.Lock()

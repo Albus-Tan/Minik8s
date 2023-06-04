@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dns-network-test-debugger
+  namespace: default
+spec:
+  containers:
+    - image: lwsg/debug-server
+      imagePullPolicy: PullIfNotPresent
+      name: debug-server
+  restartPolicy: Always

@@ -12,16 +12,14 @@ import (
 	"reflect"
 )
 
-func CreateWorkerNode(configFileName string) *core.Node {
+func CreateWorkerNode() *core.Node {
 	nodeCli, _ := apiclient.NewRESTClient(types.NodeObjectType)
 	nc := &NodeCreator{
 		nodeClient: nodeCli,
 		nodeInfo:   nil,
 		ty:         config.Worker,
 	}
-	if nc.initNode(configFileName) {
-		nc.registerNode()
-	}
+	nc.registerNode(nc.initNode())
 	return nc.nodeInfo
 }
 
@@ -32,10 +30,7 @@ func CreateMasterNode() *core.Node {
 		nodeInfo:   nil,
 		ty:         config.Master,
 	}
-	if nc.initNode(config.MasterNodeConfigFileName) {
-		nc.registerNode()
-	}
-
+	nc.registerNode(nc.initNode())
 	return nc.nodeInfo
 }
 
@@ -53,12 +48,14 @@ type NodeCreator struct {
 	nodeInfo   *core.Node
 }
 
-func (nc *NodeCreator) initNode(configFileName string) bool {
+func (nc *NodeCreator) initNode() bool {
 
-	nc.nodeInfo = config.LoadNodeFromTemplate(configFileName)
+	nc.nodeInfo = config.LoadNodeFromTemplate()
 
 	// FIXME: get IP address of physical machine and set address field of node
-	nc.nodeInfo.Spec.Address = "localhost"
+	if nc.nodeInfo.Spec.Address == "" {
+		nc.nodeInfo.Spec.Address = "localhost"
+	}
 
 	if nc.ty == config.Master {
 		nc.nodeInfo.Name = NameMaster
@@ -115,16 +112,19 @@ func (nc *NodeCreator) generateNodeName() string {
 	return name
 }
 
-func (nc *NodeCreator) registerNode() {
-	nc.nodeInfo.Status.Phase = core.NodePending
-	_, resp, err := nc.nodeClient.Post(nc.nodeInfo)
-	if err != nil {
-		panic(err)
+func (nc *NodeCreator) registerNode(new bool) {
+	if new {
+		nc.nodeInfo.Status.Phase = core.NodePending
+		_, resp, err := nc.nodeClient.Post(nc.nodeInfo)
+		if err != nil {
+			panic(err)
+		}
+		nc.nodeInfo.SetUID(resp.UID)
+		nc.nodeInfo.SetResourceVersion(resp.ResourceVersion)
+
 	}
-	nc.nodeInfo.SetUID(resp.UID)
-	nc.nodeInfo.SetResourceVersion(resp.ResourceVersion)
 	nc.nodeInfo.Status.Phase = core.NodeRunning
-	_, _, err = nc.nodeClient.Put(resp.UID, nc.nodeInfo)
+	_, _, err := nc.nodeClient.Put(nc.nodeInfo.UID, nc.nodeInfo)
 	if err != nil {
 		panic(err)
 	}

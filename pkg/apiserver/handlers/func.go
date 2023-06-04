@@ -92,6 +92,17 @@ func HandleFuncCall(c *gin.Context) {
 	doInsideFuncCall(instanceId, funcTemplate, string(buf), c)
 
 	// return instanceId
+	quick_path := 50
+	for i := 0; i < quick_path; i = i + 1 {
+		value, err := etcd.Get(api.FuncURL + instanceId)
+		if err != nil || value == etcd.EmptyGetResult {
+			time.Sleep(config.FuncCallColdBootWait)
+			continue
+		} else {
+			c.JSON(http.StatusOK, value)
+			return
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"status": "OK", "id": instanceId})
 }
 
@@ -275,7 +286,7 @@ func doInsideFuncCall(instanceId string, funcTemplate *core.Func, args string, c
 func doInsideFuncCallV2(instanceId string, funcTemplate *core.Func, args string, c *gin.Context) {
 
 	// modify timestamp and counter in status
-	originNum := funcTemplate.Status.Counter
+	//originNum := funcTemplate.Status.Counter
 	instanceNum := funcTemplate.Status.Counter
 	maxInstanceNum := config.FuncDefaultMaxInstanceNum
 	if funcTemplate.Spec.MaxInstanceNum != nil {
@@ -295,20 +306,22 @@ func doInsideFuncCallV2(instanceId string, funcTemplate *core.Func, args string,
 		return
 	}
 
-	if originNum == 0 {
-		// if there were no instance before, wait some time for instance cold boot
-		time.Sleep(config.FuncCallColdBootWait)
-	}
-
 	// TODO @wjr for serverless v2, redirect http request to service,
 	// 	use loop to wait for pod running
-	err = doCallRequest(funcTemplate.Spec.ServiceAddress, instanceId, args)
-	if err != nil {
-		logger.ApiServerLogger.Println("request error: ", err)
-	}
-	logger.ApiServerLogger.Printf(
-		"[apiserver] doInsideFuncCall v2 success: for instanceId %v, redirect to service UID %v of func %v",
-		instanceId, funcTemplate.Status.ServiceUID, funcTemplate.Spec.Name)
+	go func() {
+		for {
+			err = doCallRequest(funcTemplate.Spec.ServiceAddress, instanceId, args)
+			if err != nil {
+				logger.ApiServerLogger.Println("request error: ", err)
+				time.Sleep(config.FuncCallColdBootWait)
+				continue
+			}
+			logger.ApiServerLogger.Printf(
+				"[apiserver] doInsideFuncCall v2 success: for instanceId %v, redirect to service UID %v of func %v",
+				instanceId, funcTemplate.Status.ServiceUID, funcTemplate.Spec.Name)
+			break
+		}
+	}()
 
 }
 

@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx
+  name: rs-service
+  namespace: default
+spec:
+  ports:
+    - name: hello
+      port: 80
+      targetPort: 80
+  selector:
+    app: rs-app
+  clusterIP: 10.6.0.2
+  type: ClusterIP

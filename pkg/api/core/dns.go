@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -12,6 +13,11 @@ type DNS struct {
 	meta.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Spec            DnsSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 	Status          DnsStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+func (j *DNS) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", "NAME", "UID", "HOSTNAME", "ADDRESS")
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", j.Name, j.UID, j.Spec.Hostname, j.Spec.ServiceAddress)
 }
 
 func (j *DNS) SetUID(uid types.UID) {
@@ -119,6 +125,13 @@ type DnsList struct {
 	meta.TypeMeta `json:",inline"`
 	meta.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Items         []DNS `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (j *DnsList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", "NAME", "UID", "HOSTNAME", "ADDRESS")
+	for _, item := range j.Items {
+		fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\n", item.Name, item.UID, item.Spec.Hostname, item.Spec.ServiceAddress)
+	}
 }
 
 func (j *DnsList) JsonUnmarshal(data []byte) error {

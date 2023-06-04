@@ -3,7 +3,6 @@ package kubelet
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"minik8s/config"
 	"minik8s/pkg/api/core"
@@ -333,6 +332,7 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 	for {
 		err := k.inspectContainer(ctx, pod)
 		if err != nil {
+			logger.KubeletLogger.Printf("%s stale", pod.Name)
 			return
 		}
 		time.Sleep(time.Second)
@@ -340,17 +340,14 @@ func (k *kubelet) startWatchContainers(ctx context.Context, pod core.Pod) {
 }
 
 func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
-	pod.Status.Phase = core.PodRunning
 	ip, err := k.criClient.ContainerIP(ctx, k.criClient.ContainerId(ctx, pod.UID+"-"+"pause"))
 
 	if err != nil {
 		return err
 	}
-	pod.Status.PodIP = ip
-
-	pod.Status.ContainerStatuses = make([]core.ContainerStatus, 0)
+	ncs := make([]core.ContainerStatus, 0)
 	for _, container := range pod.Spec.Containers {
-		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, core.ContainerStatus{
+		ncs = append(ncs, core.ContainerStatus{
 			Name: container.Name,
 			State: core.ContainerState{
 				Waiting:    nil,
@@ -362,13 +359,13 @@ func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
 			ContainerID: k.criClient.ContainerId(ctx, pod.UID+"-"+container.Name),
 		})
 	}
-	for idx, c := range pod.Status.ContainerStatuses {
+	for idx, c := range ncs {
 		r, e, err := k.criClient.ContainerStatus(ctx, c.ContainerID)
 		if err != nil {
 			return err
 		}
 		if !r || err != nil {
-			pod.Status.ContainerStatuses[idx].State = core.ContainerState{
+			ncs[idx].State = core.ContainerState{
 				Terminated: &core.ContainerStateTerminated{
 					ExitCode:    int32(e),
 					Signal:      0,
@@ -377,27 +374,44 @@ func (k *kubelet) inspectContainer(ctx context.Context, pod core.Pod) error {
 					ContainerID: c.ContainerID,
 				},
 			}
-			if pod.Spec.RestartPolicy == core.RestartPolicyAlways {
-				if err := k.criClient.ContainerStart(ctx, pod.UID+"-"+c.Name); err != nil {
-					return err
-				}
-
-			}
 		}
 	}
+	var ns core.PodPhase
+	t := true
+	for _, c := range ncs {
+		if c.State.Running != nil {
+			t = false
+		}
+	}
+	if t {
+		s := true
+		for _, c := range ncs {
+			if c.State.Terminated.ExitCode != 0 {
+				s = false
+			}
+		}
+		if s {
+			ns = core.PodSucceeded
+		} else {
+			ns = core.PodFailed
+		}
+	} else {
+		ns = core.PodRunning
+	}
 
-	oa, err := k.podClient.Get(pod.UID)
-	if err != nil {
-		return err
+	if ns != pod.Status.Phase || ip != pod.Status.PodIP || !reflect.DeepEqual(ncs, pod.Status.ContainerStatuses) {
+		pod.Status.Phase = ns
+		pod.Status.PodIP = ip
+		pod.Status.ContainerStatuses = ncs
+		r, err := k.podClient.Get(pod.UID)
+		if err != nil {
+			return err
+		}
+		rr := r.(*core.Pod)
+		if reflect.DeepEqual(rr.Spec, pod.Spec) && !reflect.DeepEqual(rr.Status, pod.Status) {
+			rr.Status = pod.Status
+			_, _, err = k.podClient.Put(pod.UID, rr)
+		}
 	}
-	op := oa.(*core.Pod)
-	if !reflect.DeepEqual(op.Spec, pod.Spec) {
-		return fmt.Errorf("stale")
-	}
-	if reflect.DeepEqual(op.Status, pod.Status) {
-		return nil
-	}
-
-	_, _, err = k.podClient.Put(pod.UID, &pod)
-	return err
+	return nil
 }

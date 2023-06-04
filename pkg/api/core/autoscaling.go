@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"minik8s/pkg/api/meta"
 	"minik8s/pkg/api/types"
 	"strconv"
@@ -25,6 +26,12 @@ type HorizontalPodAutoscaler struct {
 	// status is the current information about the autoscaler.
 	// +optional
 	Status HorizontalPodAutoscalerStatus `json:"status,omitempty"`
+}
+
+func (h *HorizontalPodAutoscaler) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\t%-15s\t%-15s\n", "NAME", "UID", "REFERENCE", "MINPODS", "MAXPODS", "REPLICAS")
+	fmt.Printf("%-20s\t%-40s\t%-25s/%s\t%-15d\t%-15d\t%-15d\n", h.Name, h.UID, h.Spec.ScaleTargetRef.Kind, h.Spec.ScaleTargetRef.Name, h.Spec.MinReplicas, h.Spec.MaxReplicas, h.Status.DesiredReplicas)
+
 }
 
 func (h *HorizontalPodAutoscaler) SetUID(uid types.UID) {
@@ -387,6 +394,13 @@ type HorizontalPodAutoscalerList struct {
 	// List of pods.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
 	Items []HorizontalPodAutoscaler `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+func (h *HorizontalPodAutoscalerList) PrintBrief() {
+	fmt.Printf("%-20s\t%-40s\t%-15s\t%-15s\t%-15s\t%-15s\n", "NAME", "UID", "REFERENCE", "MINPODS", "MAXPODS", "REPLICAS")
+	for _, item := range h.Items {
+		fmt.Printf("%-20s\t%-40s\t%-25s/%s\t%-15d\t%-15d\t%-15d\n", item.Name, item.UID, item.Spec.ScaleTargetRef.Kind, item.Spec.ScaleTargetRef.Name, item.Spec.MinReplicas, item.Spec.MaxReplicas, item.Status.DesiredReplicas)
+	}
 }
 
 func (h *HorizontalPodAutoscalerList) JsonUnmarshal(data []byte) error {

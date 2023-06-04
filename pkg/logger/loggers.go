@@ -15,6 +15,7 @@ var KubectlLogger Logger
 var KubeletLogger Logger
 var DNSControllerLogger Logger
 var ServerlessControllerLogger Logger
+var PodControllerLogger Logger
 
 func init() {
 	ApiServerLogger = utils.NewComponentLogger("ApiServer")
@@ -27,5 +28,6 @@ func init() {
 	KubeletLogger = utils.NewComponentLogger("Kubelet")
 	GpuServerLogger = utils.NewComponentLogger("GpuServer")
 	DNSControllerLogger = utils.NewComponentLogger("DNSController")
-	ServerlessControllerLogger = utils.NewComponentLogger("Serverless")
+	ServerlessControllerLogger = utils.NewComponentLogger("ServerlessController")
+	PodControllerLogger = utils.NewComponentLogger("PodController")
 }

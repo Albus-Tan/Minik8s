@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  generation: 1
+  labels:
+    app: myapp
+    tier: frontend
+  name: myapp-replicas
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: hpa-test
+        tier: frontend
+    spec:
+      containers:
+        - image: lwsg/debug-server
+          imagePullPolicy: PullIfNotPresent
+          name: debug-server
+          resources:
+            limits:
+              cpu: '1'
+            requests:
+              cpu: 200m
+        - image: lwsg/notice-server
+          imagePullPolicy: PullIfNotPresent
+          name: notice-server
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          env:
+            - name: _NOTICE
+              value: |
+                1
+      restartPolicy: Always

@@ -1,0 +1,31 @@
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  generation: 1
+  labels:
+    app: myapp
+    tier: frontend
+  name: myapp-replicas-memory
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: myapp
+        tier: frontend
+    spec:
+      containers:
+        - image: lwsg/debug-server
+          imagePullPolicy: PullIfNotPresent
+          name: debug-server
+          resources:
+            limits:
+              memory: 50M
+            requests:
+              memory: 5M
+      restartPolicy: Always
