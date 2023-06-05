@@ -205,16 +205,16 @@ go build minik8s/cmd/kubectl
 
 下表包括了所有 kubectl 操作简短描述和通用语法：
 
-| Operation | Syntax                                             | Description                  |
-| --------- | -------------------------------------------------- | ---------------------------- |
-| apply     | kubectl apply [TYPE] -f FILENAME [flags]           | 从文件创建资源               |
-| create    | kubectl create [TYPE] -f FILENAME [flags]          | 从文件创建资源               |
-| delete    | kubectl del [TYPE] [NAME] [flags]                  | 删除资源                     |
+| Operation | Syntax                                             | Description    |
+|-----------|----------------------------------------------------|----------------|
+| apply     | kubectl apply [TYPE] -f FILENAME [flags]           | 从文件创建资源        |
+| create    | kubectl create [TYPE] -f FILENAME [flags]          | 从文件创建资源        |
+| delete    | kubectl del [TYPE] [NAME] [flags]                  | 删除资源           |
 | describe  | kubectl describe [TYPE] ([NAME]) [flags]           | 显示一个或所有资源的详细状态 |
 | get       | kubectl get [TYPE] ([NAME]) [flags]                | 列出一个或所有资源的简略状态 |
-| update    | kubectl update [TYPE] ([NAME]) -f FILENAME [flags] | 从文件更改资源               |
-| clear     | kubectl clear                                      | 清空现有所有资源             |
-| help      | kubectl --help/-h                                  | 帮助信息                     |
+| update    | kubectl update [TYPE] ([NAME]) -f FILENAME [flags] | 从文件更改资源        |
+| clear     | kubectl clear                                      | 清空现有所有资源       |
+| help      | kubectl --help/-h                                  | 帮助信息           |
 
 `FILENAME`：其中文件支持 `yaml` 和 `json` 格式的配置文件
 
@@ -257,7 +257,7 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
   - GpuServer：管理 Gpu Job
 - 工作节点 Worker
   - Kubelet：在每个节点上控制管理 Pod 生命周期
-  - Kubeproxy：管理节点网络以及 service
+  - Kubeproxy：配置节点网络，实现统一网络抽象
 - 其他
   - Kubectl：命令行工具，用于与控制面交互
   - ApiClient：能够与 ApiServer 交互通信的 Client
@@ -282,7 +282,7 @@ Minik8s 的总体架构整体上参考了课上所提供的 minik8s best practic
     - HorizontalController：管理实现 HPA 自动扩缩容功能，通过获取各节点上资源占用进行有关决策
       - MetricsClient：聚合各节点上的资源占用（如依据一类 Pod 进行聚合）
         - CadvisorClient：与节点上的 cadvisor 进行交互，获取资源占用信息
-    - DnsController：管理实现 Dns 功能
+    - DnsController：管理实现 Dns 与 Http 请求转发功能
     - ServerlessController：负责实现 Serverless 函数的实例生命周期管理等
   - GpuServer：负责提交 Gpu 任务至云平台，根据配置进行脚本生成，以及下载反馈结果
     - JobClient：负责通过 ssh 与云平台进行交互
