@@ -2,6 +2,8 @@
 
 Minik8s is a container orchestration tool like [Kubernetes](https://kubernetes.io/), which can manage containers that meet the CRI interface on multiple machines, supporting basic features such as container lifecycle management,  dynamic and automatic scaling, with Serverless platform integration.
 
+[Chinese version](./README_zh.md)
+
 ## Quick Start
 
 ### Install Dependencies
